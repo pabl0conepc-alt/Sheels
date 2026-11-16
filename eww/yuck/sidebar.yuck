@@ -1,0 +1,36 @@
+; Sidebar (Caelestia modules/sidebar): notification centre + utilities,
+; full height on the right.
+(defwindow sidebar [h]
+  :geometry (geometry :anchor "center right" :height "${h}px")
+  :stacking "overlay" :exclusive false :focusable "none" :namespace "sheels-sidebar"
+  (revealer :transition "slideleft" :reveal {ui.sidebar} :duration "400ms"
+    (box :class "panel right sidebar-panel" :orientation "v" :space-evenly false :vexpand true
+      (box :class "card notif-centre" :orientation "v" :space-evenly false :vexpand true
+        (box :orientation "h" :space-evenly false :class "nc-head"
+          (label :class "nc-title" :xalign 0 :hexpand true
+                 :text {notifs.count > 0 ? "${notifs.count} notification${notifs.count == 1 ? '' : 's'}" : "Notifications"})
+          (button :class "icon-btn ${status.dnd ? 'active' : ''}" :onclick "sheels dnd" :tooltip "Do not disturb"
+            (label :class "icon" :text {status.dnd ? "notifications_off" : "notifications_active"}))
+          (button :class "icon-btn" :visible {notifs.count > 0} :onclick "sheels notifs clear" :tooltip "Clear all"
+            (label :class "icon" :text "clear_all")))
+        (box :visible {notifs.count == 0} :orientation "v" :space-evenly false :valign "center" :vexpand true :class "nc-empty"
+          (image :path "${assets}/dino.png" :fill-svg "" :image-width 300 :image-height 129)
+          (label :class "nc-empty-text" :text "All up to date!"))
+        (box :visible {notifs.count > 0} :vexpand true :orientation "v" :space-evenly false
+          (box :orientation "v" :space-evenly false :class "nc-list"
+            (for g in {notifs.groups}
+              (box :class "nc-group" :orientation "v" :space-evenly false
+                (box :orientation "h" :space-evenly false :class "nc-group-head"
+                  (box :class "nc-group-icon"
+                    (image :visible {g.icon != ""} :icon {g.icon} :icon-size "small-toolbar")
+                    (label :visible {g.icon == ""} :class "icon fill" :text {g.matIcon}))
+                  (label :class "nc-group-app" :xalign 0 :hexpand true :text {g.app})
+                  (label :class "notif-time" :text {g.time})
+                  (button :class "nc-count" :visible {g.count > 1} :onclick "sheels notifs expand-idx ${g.idx}"
+                    (label :text {g.count}))
+                  (button :class "icon-btn" :onclick "sheels notifs clear-app-idx ${g.idx ?: 0}"
+                    (label :class "icon" :text "close")))
+                (for n in {g.notifs}
+                  (notif-card :n n)))))))
+      (box :class "sidebar-gap")
+      (utility-cards))))

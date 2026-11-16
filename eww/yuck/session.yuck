@@ -1,0 +1,19 @@
+; Session menu (Caelestia modules/session): slides out of the right border,
+; dims the screen. Keyboard: arrows move focus, Enter activates.
+(defwindow session []
+  :geometry (geometry :anchor "center right")
+  :stacking "overlay" :exclusive false :focusable "exclusive" :namespace "sheels-session"
+  (revealer :transition "slideleft" :reveal {ui.session} :duration "400ms"
+    (box :orientation "v" :space-evenly false
+      (box :class "fillet rt" :halign "end")
+      (box :class "panel right session-panel" :orientation "v" :space-evenly false
+        (session-btn :icon "logout" :cmd "sheels session logout" :tip "Logout")
+        (session-btn :icon "power_settings_new" :cmd "sheels session shutdown" :tip "Shutdown")
+        (image :class "session-gif" :path "${assets}/kurukuru-80.gif")
+        (session-btn :icon "downloading" :cmd "sheels session hibernate" :tip "Hibernate")
+        (session-btn :icon "cached" :cmd "sheels session reboot" :tip "Reboot"))
+      (box :class "fillet rb" :halign "end"))))
+
+(defwidget session-btn [icon cmd tip]
+  (button :class "session-btn" :onclick cmd :tooltip tip
+    (label :class "icon session-icon" :text icon)))

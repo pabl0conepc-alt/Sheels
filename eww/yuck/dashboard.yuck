@@ -1,0 +1,274 @@
+; Dashboard (Caelestia modules/dashboard): drops out of the top border.
+; Tabs: Dashboard · Media · Performance · Weather.
+
+(defwindow dashboard []
+  :geometry (geometry :anchor "top center")
+  :stacking "overlay" :exclusive false :focusable "none" :namespace "sheels-dashboard"
+  (eventbox :onhover "sheels hover dashboard" :onhoverlost "sheels unhover dashboard"
+    (revealer :transition "slidedown" :reveal {ui.dashboard} :duration "400ms"
+      (box :orientation "h" :space-evenly false
+        (box :class "fillet tl" :valign "start")
+        (box :class "panel top dash" :orientation "v" :space-evenly false
+          (dash-tabs)
+          (stack :class "dash-stack" :selected {ui.dashTab} :transition "slideleft" :same-size false
+            (dash-main)
+            (dash-media)
+            (dash-perf)
+            (dash-weather)))
+        (box :class "fillet tr" :valign "start")))))
+
+; ---------------------------------------------------------------- tabs
+(defwidget dash-tab [idx icon label]
+  (button :class "dash-tab ${ui.dashTab == idx ? 'active' : ''}" :onclick "sheels dash-tab ${idx}" :hexpand true
+    (box :orientation "v" :space-evenly false :halign "center"
+      (icon :name icon :fill {ui.dashTab == idx})
+      (label :class "dash-tab-label" :text label))))
+
+(defwidget dash-tabs []
+  (box :orientation "v" :space-evenly false :class "dash-tabs"
+    (eventbox :onscroll "sheels dash-tab-scroll {}"
+      (box :orientation "h" :space-evenly true
+        (box :visible {cfg.dashboard.showDashboard} (dash-tab :idx 0 :icon "dashboard" :label "Dashboard"))
+        (box :visible {cfg.dashboard.showMedia} (dash-tab :idx 1 :icon "queue_music" :label "Media"))
+        (box :visible {cfg.dashboard.showPerformance} (dash-tab :idx 2 :icon "speed" :label "Performance"))
+        (box :visible {cfg.dashboard.showWeather} (dash-tab :idx 3 :icon "cloud" :label "Weather"))))
+    (box :class "dash-tab-track" :halign "fill"
+      (box :class "dash-tab-indicator" :halign "start"
+           :style "margin-left: ${ui.dashTabMargin ?: 61}px; min-width: ${ui.dashTabIndW ?: 88}px;"))))
+
+; ---------------------------------------------------------------- dashboard tab
+(defwidget dash-main []
+  (box :orientation "h" :space-evenly false :class "dash-grid"
+    (box :orientation "v" :space-evenly false :class "dash-col"
+      (box :orientation "h" :space-evenly false :class "dash-row"
+        (dash-weather-small)
+        (dash-user))
+      (box :orientation "h" :space-evenly false :class "dash-row bottom"
+        (dash-datetime)
+        (dash-calendar)
+        (dash-resources)))
+    (dash-media-small)))
+
+(defwidget dash-weather-small []
+  (box :class "card weather-small" :orientation "h" :space-evenly false :halign "fill"
+    (box :hexpand true)
+    (icon :class "weather-small-icon" :name {info.weather.available == true ? info.weather.icon : "cloud_alert"})
+    (box :orientation "v" :space-evenly false :valign "center" :class "weather-small-info"
+      (label :class "weather-small-temp" :text {info.weather.available == true ? info.weather.temp : "--°C"})
+      (label :class "weather-small-desc" :limit-width 18 :text {info.weather.available == true ? info.weather.desc : "No weather"}))
+    (box :hexpand true)))
+
+(defwidget dash-user []
+  ; Absolute layout (overlay + margins) mirroring Caelestia's User.qml.
+  (overlay :class "card user"
+    (box :class "user-base")
+    (box :class "user-avatar ${info.face == '' ? 'empty' : ''}" :halign "start" :valign "start"
+         :style "${info.face != '' ? 'background-image: url(\"' + info.face + '\");' : ''}"
+      (box :visible {info.face == ''} (icon :class "user-avatar-icon" :name "person_add" :fill true)))
+    (box :class "user-logo" :halign "start" :valign "start"
+      (image :path {theme.logo} :image-width 24 :image-height 17))
+    (box :class "user-uptime-icon" :halign "start" :valign "start"
+      (icon :name "clock_arrow_up" :fill true))
+    (label :class "user-uptime" :halign "start" :valign "start" :limit-width 20 :text {info.uptime})
+    (box :class "bubble-dot sm" :halign "start" :valign "start")
+    (box :class "bubble-dot md" :halign "start" :valign "start")
+    (box :class "user-wm" :halign "start" :valign "start" :orientation "h" :space-evenly false
+      (icon :name "select_window" :fill true)
+      (label :text {info.wm ?: "driftwm"}))))
+
+(defwidget dash-datetime []
+  (box :class "card datetime" :orientation "v" :space-evenly false :valign "fill"
+    (box :vexpand true)
+    (label :class "dt-num" :text {formattime(EWW_TIME, cfg.services.clockFormat == "12h" ? "%I" : "%H")})
+    (label :class "dt-dots" :text "•••")
+    (label :class "dt-num" :text {formattime(EWW_TIME, "%M")})
+    (label :class "dt-dots" :visible {cfg.dashboard.showClockSeconds} :text "•••")
+    (label :class "dt-num" :visible {cfg.dashboard.showClockSeconds}
+           :text {cfg.dashboard.showClockSeconds ? formattime(EWW_TIME, "%S") : ""})
+    (box :vexpand true)))
+
+(defwidget dash-calendar []
+  (box :class "card calendar" :orientation "v" :space-evenly false
+    (box :orientation "h" :space-evenly false :class "cal-head"
+      (button :class "cal-nav" :onclick "sheels cal prev" (icon :name "chevron_left"))
+      (button :class "cal-title" :hexpand true :onclick "sheels cal today" (label :text {info.cal?.title ?: ""}))
+      (button :class "cal-nav" :onclick "sheels cal next" (icon :name "chevron_right")))
+    (box :orientation "h" :space-evenly true :class "cal-week-names"
+      (label :text "Mon") (label :text "Tue") (label :text "Wed") (label :text "Thu") (label :text "Fri")
+      (label :class "weekend" :text "Sat") (label :class "weekend" :text "Sun"))
+    (box :orientation "v" :space-evenly true :class "cal-days"
+      (for week in {info.cal?.weeks ?: []}
+        (box :orientation "h" :space-evenly true
+          (for day in week
+            (overlay :class "cal-day"
+              (image :visible {day.today} :class "cal-today-shape" :path "${assets}/shapes/cookie12.svg"
+                     :fill-svg {theme.c.primary ?: '#ffb0ca'} :image-width 34 :image-height 34)
+              (label :class "cal-num ${day.today ? 'today' : ''} ${day.cur ? '' : 'other'} ${day.weekend ? 'weekend' : ''}"
+                     :text {day.d}))))))))
+
+(defwidget dash-resources []
+  (box :class "card resources" :orientation "v" :space-evenly true
+    (ring :class "cpu" :value {sys.cpu} :icon "memory")
+    (ring :class "mem" :value {sys.mem} :icon "memory_alt")
+    (ring :class "disk" :value {sys.storage?.[0]?.pct ?: 0} :icon "hard_disk")))
+
+; Media card: cover inside an arc progress, title/album/artist, controls, bongocat.
+(defwidget dash-media-small []
+  (box :class "card media-small" :orientation "v" :space-evenly false
+    (overlay :class "media-arc-wrap" :halign "center"
+      (box :class "media-arc-base")
+      (circular-progress :class "media-arc-track" :value 50 :start-at 50 :thickness 6 :clockwise true)
+      (circular-progress :class "media-arc" :start-at 50 :thickness 6 :clockwise true
+                         :value {media.len > 0 ? 50 * (media.playing ? (media.pos + EWW_TIME - media.ts) : media.pos) / media.len : 0})
+      (box :class "media-cover ${media.art == '' ? 'empty' : ''}" :halign "center" :valign "center"
+           :style "${media.art != '' ? 'background-image: url(\"' + media.art + '\");' : ''}"
+        (box :visible {media.art == ''} (icon :class "media-cover-icon" :name "art_track" :fill true))))
+    (label :class "media-title" :limit-width 16 :text {media.available ? media.title : "No media"})
+    (label :class "media-album" :limit-width 18 :text {media.available ? (media.album ?: "") : "No media"})
+    (label :class "media-artist" :limit-width 18 :text {media.available ? media.artist : "No media"})
+    (box :orientation "h" :space-evenly false :halign "center" :class "media-controls"
+      (button :class "media-btn" :onclick "sheels media previous" (icon :name "skip_previous" :fill true))
+      (button :class "media-btn play ${media.playing ? 'playing' : ''}" :onclick "sheels media play-pause"
+        (icon :name {media.playing ? "pause" : "play_arrow"} :fill true))
+      (button :class "media-btn" :onclick "sheels media next" (icon :name "skip_next" :fill true)))
+    (image :class "bongocat" :path "${assets}/bongocat-sm.${media.playing ? 'gif' : 'png'}")))
+
+; ---------------------------------------------------------------- media tab
+(defwidget dash-media []
+  (box :class "dash-media" :orientation "h" :space-evenly false
+    (box :class "card media-big-art" :orientation "v" :space-evenly false
+      (box :class "media-cover big ${media.art == '' ? 'empty' : ''}"
+           :style "${media.art != '' ? 'background-image: url(\"' + media.art + '\");' : ''}"
+        (box :visible {media.art == ''} (icon :class "media-cover-icon big" :name "queue_music" :fill true))))
+    (box :class "media-big-info" :orientation "v" :space-evenly false :hexpand true :valign "center"
+      (label :class "media-big-title" :xalign 0 :limit-width 34 :text {media.available ? media.title : "Nothing playing"})
+      (label :class "media-big-artist" :xalign 0 :limit-width 40
+             :text {media.available ? media.artist : "Play something for it to show up here!"})
+      (label :class "media-big-album" :xalign 0 :limit-width 40 :text {media.album ?: ""})
+      (box :class "media-progress" :orientation "v" :space-evenly false :visible {media.available}
+        (scale :class "media-slider" :min 0 :max 101
+               :value {media.len > 0 ? 100 * (media.playing ? (media.pos + EWW_TIME - media.ts) : media.pos) / media.len : 0}
+               :onchange "sheels media seek-to {}%")
+        (box :orientation "h" :space-evenly false
+          (label :class "media-time" :xalign 0 :hexpand true
+                 :text {formattime(media.playing ? (media.pos + EWW_TIME - media.ts) : media.pos, "%M:%S", "UTC")})
+          (label :class "media-time" :xalign 1 :text {formattime(media.len, "%M:%S", "UTC")})))
+      (box :orientation "h" :space-evenly false :halign "start" :class "media-controls big"
+        (button :class "media-btn" :onclick "sheels media previous" (icon :name "skip_previous" :fill true))
+        (button :class "media-btn play ${media.playing ? 'playing' : ''}" :onclick "sheels media play-pause"
+          (icon :name {media.playing ? "pause" : "play_arrow"} :fill true))
+        (button :class "media-btn" :onclick "sheels media next" (icon :name "skip_next" :fill true))
+        (button :class "media-btn" :onclick "sheels media player next" :tooltip "Switch player"
+          (icon :name "swap_horiz"))))
+    (box :class "media-big-side" :orientation "v" :space-evenly false :valign "center"
+      (for p in {media.players}
+        (button :class "player-chip ${p.bus == media.bus ? 'active' : ''}" :onclick "sheels media player ${p.bus}"
+          (label :text {p.name})))
+      (image :class "bongocat" :path "${assets}/bongocat-md.${media.playing ? 'gif' : 'png'}"))))
+
+; ---------------------------------------------------------------- performance tab
+(defwidget perf-hero [title icon value sub temp tempPct ?cls]
+  (box :class "card perf-hero ${cls ?: ''}" :orientation "h" :space-evenly false
+    (overlay :class "perf-ring-wrap"
+      (box :class "perf-ring-base")
+      (circular-progress :class "perf-ring-track" :value 100 :thickness 10 :start-at 75)
+      (circular-progress :class "perf-ring" :value value :thickness 10 :start-at 75 :clockwise true)
+      (box :orientation "v" :space-evenly false :halign "center" :valign "center"
+        (icon :class "perf-ring-icon" :name icon :fill true)
+        (label :class "perf-ring-value" :text "${round(value, 0)}%")))
+    (box :orientation "v" :space-evenly false :valign "center" :hexpand true :class "perf-hero-info"
+      (label :class "perf-title" :xalign 0 :text title)
+      (label :class "perf-sub" :xalign 0 :limit-width 28 :text sub)
+      (box :orientation "h" :space-evenly false :class "perf-temp" :visible {temp != ""}
+        (icon :name "thermostat" :fill true)
+        (box :class "hbar-wrap" :hexpand true :valign "center" (hbar :value tempPct :class "temp"))
+        (label :class "perf-temp-val" :text temp)))))
+
+(defwidget dash-perf []
+  (box :class "dash-perf" :orientation "v" :space-evenly false
+    (box :orientation "h" :space-evenly false :class "dash-row"
+      (box :visible {cfg.dashboard.performance.showCpu} (perf-hero :title "CPU" :icon "memory" :value {sys.cpu} :sub {sys.cpuName} :temp {sys.cpuTemp} :tempPct {sys.cpuTempPct} :cls "cpu"))
+      (box :visible {cfg.dashboard.performance.showGpu} (perf-hero :title "GPU" :icon "auto_awesome_motion" :value {sys.gpu ?: 0} :sub {sys.hasGpu ? sys.gpuName : "Not available"}
+                 :temp {sys.gpuTemp} :tempPct {sys.gpuTempPct} :cls "gpu")))
+    (box :orientation "h" :space-evenly false :class "dash-row bottom"
+      (box :class "card perf-mem" :orientation "v" :space-evenly false
+           :visible {cfg.dashboard.performance.showMemory || cfg.dashboard.performance.showStorage}
+        (box :orientation "v" :space-evenly false :visible {cfg.dashboard.performance.showMemory}
+          (box :orientation "h" :space-evenly false
+            (icon :class "perf-card-icon" :name "memory_alt" :fill true)
+            (label :class "perf-title" :xalign 0 :hexpand true :text "Memory")
+            (label :class "perf-pct" :text "${sys.mem}%"))
+          (hbar :value {sys.mem} :class "mem")
+          (label :class "perf-sub" :xalign 0 :text "${sys.memUsed} / ${sys.memTotal}"))
+        (box :class "perf-sep" :visible {cfg.dashboard.performance.showMemory && cfg.dashboard.performance.showStorage})
+        (box :orientation "v" :space-evenly false :visible {cfg.dashboard.performance.showStorage}
+        (box :orientation "h" :space-evenly false
+          (icon :class "perf-card-icon" :name "hard_disk" :fill true)
+          (label :class "perf-title" :xalign 0 :text "Storage"))
+        (for d in {sys.storage}
+          (box :orientation "v" :space-evenly false :class "perf-disk"
+            (box :orientation "h" :space-evenly false
+              (label :class "perf-sub" :xalign 0 :hexpand true :text {d.name})
+              (label :class "perf-sub" :text "${d.used} / ${d.total}"))
+            (hbar :value {d.pct} :class "disk")))))
+      (box :class "card perf-net" :orientation "v" :space-evenly false :hexpand true :visible {cfg.dashboard.performance.showNetwork}
+        (box :orientation "h" :space-evenly false
+          (icon :class "perf-card-icon" :name "swap_vert" :fill true)
+          (label :class "perf-title" :xalign 0 :hexpand true :text "Network"))
+        (overlay :class "perf-graph"
+          (box :class "perf-graph-base")
+          (graph :class "net-down" :value {sys.downHist?.[29] ?: 0} :time-range "30s" :min 0 :max 100 :dynamic true :line-style "round")
+          (graph :class "net-up" :value {sys.upHist?.[29] ?: 0} :time-range "30s" :min 0 :max 100 :dynamic true :line-style "round"))
+        (box :orientation "h" :space-evenly true
+          (box :orientation "h" :space-evenly false
+            (icon :class "net-down-icon" :name "download" :fill true)
+            (box :orientation "v" :space-evenly false
+              (label :class "perf-net-val" :xalign 0 :text {sys.down})
+              (label :class "perf-sub" :xalign 0 :text "Total ${sys.totalDown}")))
+          (box :orientation "h" :space-evenly false
+            (icon :class "net-up-icon" :name "upload" :fill true)
+            (box :orientation "v" :space-evenly false
+              (label :class "perf-net-val" :xalign 0 :text {sys.up})
+              (label :class "perf-sub" :xalign 0 :text "Total ${sys.totalUp}")))))
+      (box :class "card perf-bat" :orientation "v" :space-evenly false :visible {status.bat.present && cfg.dashboard.performance.showBattery}
+        (icon :class "perf-bat-icon" :name {status.bat.icon} :fill true)
+        (label :class "perf-bat-pct" :text "${status.bat.pct}%")
+        (label :class "perf-sub" :text {status.bat.charging ? "Charging" : status.bat.onAc ? "Plugged in" : "Discharging"})
+        (label :class "perf-sub" :text {status.bat.time})))))
+
+; ---------------------------------------------------------------- weather tab
+(defwidget dash-weather []
+  (box :class "dash-weather" :orientation "h" :space-evenly false
+    (box :class "card weather-now" :orientation "v" :space-evenly false
+      (label :class "weather-city" :text {info.weather.city ?: ""})
+      (box :orientation "h" :space-evenly false :halign "center"
+        (icon :class "weather-big-icon" :name {info.weather.available == true ? info.weather.icon : "cloud_alert"} :fill true)
+        (label :class "weather-big-temp" :text {info.weather.temp ?: "--°C"}))
+      (label :class "weather-desc" :text {info.weather.desc ?: "No weather"})
+      (label :class "weather-feels" :text "Feels like ${info.weather.feels ?: '--'}"))
+    (box :orientation "v" :space-evenly false :hexpand true :class "weather-side"
+      (box :orientation "h" :space-evenly true :class "weather-details"
+        (weather-detail :icon "humidity_percentage" :label "Humidity" :value {info.weather.humidity ?: "--"})
+        (weather-detail :icon "air" :label "Wind" :value {info.weather.wind ?: "--"})
+        (weather-detail :icon "rainy" :label "Rain" :value {info.weather.precip ?: "--"})
+        (weather-detail :icon "wb_twilight" :label "Sunrise" :value {info.weather.sunrise ?: "--"})
+        (weather-detail :icon "bedtime" :label "Sunset" :value {info.weather.sunset ?: "--"}))
+      (box :orientation "h" :space-evenly true :class "card weather-hours"
+        (for h in {info.weather.hours ?: []}
+          (box :orientation "v" :space-evenly false
+            (label :class "perf-sub" :text {h.hour})
+            (icon :class "weather-fc-icon" :name {h.icon} :fill true)
+            (label :class "weather-fc-temp" :text {h.temp}))))
+      (box :orientation "h" :space-evenly true :class "card weather-days"
+        (for d in {info.weather.days ?: []}
+          (box :orientation "v" :space-evenly false
+            (label :class "weather-fc-day" :text {d.day})
+            (icon :class "weather-fc-icon" :name {d.icon} :fill true)
+            (label :class "weather-fc-temp" :text {d.max})
+            (label :class "perf-sub" :text {d.min})))))))
+
+(defwidget weather-detail [icon label value]
+  (box :class "card weather-detail" :orientation "v" :space-evenly false
+    (icon :class "weather-detail-icon" :name icon :fill true)
+    (label :class "perf-sub" :text label)
+    (label :class "weather-detail-val" :text value)))

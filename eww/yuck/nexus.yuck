@@ -1,0 +1,353 @@
+; Nexus — settings panel (Caelestia modules/nexus). The daemon owns the
+; navigation and emits each page as a yuck snippet (nexus.yuck) built from
+; the row widgets below; values are bound to `cfg`, so toggling a switch
+; never rebuilds the page.
+
+(defwindow nexus [w h navw cw]
+  :geometry (geometry :width "${w}px" :height "${h}px" :anchor "center center")
+  :stacking "overlay" :focusable "ondemand" :namespace "sheels-nexus"
+  (revealer :transition "crossfade" :duration "250ms" :reveal {ui.nexus}
+    (box :class "nexus-panel"
+    (overlay
+      (box :class "nx-root" :space-evenly false
+        ; ---------------------------------------------------------- nav pane
+        (box :class "nx-nav" :orientation "v" :space-evenly false :width navw
+          (box :class "nx-search" :space-evenly false
+            (icon :class "nx-search-icon" :name "search")
+            (overlay :hexpand true
+              (input :class "nx-search-input" :hexpand true
+                     :onchange "sheels nexus search - <<'__SHEELS_EOF__'
+{}
+__SHEELS_EOF__")
+              (label :class "nx-search-ph" :xalign 0 :visible {nexus.query == ""} :text "Search settings")))
+          (scroll :class "nx-navscroll" :vscroll true :hscroll false :vexpand true
+            (box :orientation "v" :space-evenly false :class "nx-navlist"
+              (for p in {nexus.nav}
+                (nx-navitem :p p)))))
+        ; ---------------------------------------------------------- page
+        (box :class "nx-content" :orientation "v" :space-evenly false :hexpand true
+          (box :class "nx-header" :space-evenly false
+            (button :class "nx-back" :visible {nexus.isSub} :onclick "sheels nexus back" :valign "center"
+              (icon :name "arrow_back"))
+            (label :class "nx-title" :xalign 0 :hexpand true :limit-width 60 :text {nexus.title}))
+          (scroll :class "nx-pagescroll" :vscroll true :hscroll false :vexpand true
+            (box :halign "center" :class "nx-pagewrap"
+              (box :width cw :orientation "v" :space-evenly false
+                (literal :content {npage.yuck}))))))
+      ; close (Caelestia: the small "pip/close" button in the corner)
+      (box :halign "end" :valign "start" :class "nx-close-wrap"
+        (button :class "nx-close" :onclick "sheels nexus close" :tooltip "Close"
+          (icon :name "close")))))))
+
+(defwidget nx-navitem [p]
+  (button :class "nx-navitem ${p.first ? 'first' : ''} ${p.last ? 'last' : ''} ${nexus.page == p.i ? 'sel' : ''}"
+          :visible {nexus.match[p.i] ?: true}
+          :onclick "sheels nexus page ${p.i}"
+    (box :space-evenly false
+      (box :class "nx-navicon" :valign "center"
+        (icon :name {p.icon} :fill {p.fill}))
+      (box :orientation "v" :space-evenly false :valign "center" :hexpand true
+        (label :class "nx-navlabel" :xalign 0 :limit-width 40 :text {p.label})
+        (label :class "nx-navdesc" :xalign 0 :limit-width 48 :text {p.desc})))))
+
+; ------------------------------------------------------------------ rows
+(defwidget nx-head [text]
+  (label :class "nx-head" :xalign 0 :text text))
+
+(defwidget nx-rowtext [label desc]
+  (box :orientation "v" :space-evenly false :hexpand true :valign "center"
+    (label :class "nx-label" :xalign 0 :wrap true :text label)
+    (label :class "nx-desc" :xalign 0 :wrap true :visible {desc != ""} :text desc)))
+
+(defwidget nx-switch [on]
+  (box :class "nx-switch ${on ? 'on' : ''}" :valign "center" :halign "end" :space-evenly false
+    (box :class "nx-thumb" :valign "center"
+      (icon :class "nx-thumb-icon" :name {on ? "check" : "close"}))))
+
+(defwidget nx-toggle [label desc on cmd]
+  (button :class "nx-row" :onclick cmd
+    (box :space-evenly false
+      (nx-rowtext :label label :desc desc)
+      (nx-switch :on on))))
+
+(defwidget nx-stepper [label desc value dec inc]
+  (box :class "nx-row" :space-evenly false
+    (nx-rowtext :label label :desc desc)
+    (box :class "nx-stepper" :space-evenly false :valign "center"
+      (button :class "nx-step dec" :onclick dec (icon :name "remove"))
+      (label :class "nx-stepval" :text value)
+      (button :class "nx-step inc" :onclick inc (icon :name "add")))))
+
+(defwidget nx-select [label desc text icon cmd]
+  (button :class "nx-row" :onclick cmd
+    (box :space-evenly false
+      (nx-rowtext :label label :desc desc)
+      (box :class "nx-select" :space-evenly false :valign "center"
+        (box :class "nx-select-main" :space-evenly false
+          (icon :class "nx-select-icon" :name icon :fill true)
+          (label :class "nx-select-text" :text text))
+        (box :class "nx-select-chev" (icon :name "expand_more"))))))
+
+(defwidget nx-entry [label desc value hint cmd]
+  (box :class "nx-row" :space-evenly false
+    (nx-rowtext :label label :desc desc)
+    (overlay :class "nx-entry" :valign "center"
+      (input :class "nx-entry-input" :value value :onaccept cmd)
+      (label :class "nx-entry-ph" :xalign 0 :visible {value == ""} :text hint))))
+
+(defwidget nx-nav [icon label desc cmd]
+  (button :class "nx-row nx-navrow" :onclick cmd
+    (box :space-evenly false
+      (icon :class "nx-rowicon" :name icon :fill true)
+      (nx-rowtext :label label :desc desc)
+      (icon :class "nx-chev" :name "chevron_right"))))
+
+(defwidget nx-info [label value]
+  (box :class "nx-row nx-inforow" :space-evenly false
+    (label :class "nx-label" :xalign 0 :hexpand true :text label)
+    (label :class "nx-infoval" :xalign 1 :limit-width 48 :text value)))
+
+(defwidget nx-btnrow [icon label cmd]
+  (button :class "nx-row nx-btnrow" :onclick cmd
+    (box :space-evenly false
+      (icon :class "nx-rowicon" :name icon)
+      (label :class "nx-label" :xalign 0 :hexpand true :text label))))
+
+(defwidget nx-empty [icon text]
+  (box :class "nx-row nx-empty" :orientation "v" :space-evenly false
+    (icon :class "nx-empty-icon" :name icon)
+    (label :class "nx-empty-text" :text text)))
+
+(defwidget nx-placeholder []
+  (box :class "nx-placeholder" :orientation "v" :space-evenly false :valign "center" :vexpand true
+    (icon :class "nx-ph-icon" :name "construction")
+    (label :class "nx-ph-title" :text "Page under construction")
+    (label :class "nx-ph-desc" :text "This page will be available in a future update.")))
+
+; ------------------------------------------------------------------ wallpaper & style
+(defwidget nx-wall-preview []
+  (box :orientation "v" :space-evenly false :halign "center" :class "nx-wallwrap"
+    (box :class "nx-hero" :halign "center"
+         :style "background-image: url('${theme.thumb}');")
+    (box :halign "center" :space-evenly false :class "nx-hero-btns"
+      (button :class "nx-tonal" :onclick "sheels nexus sub 1"
+        (box :space-evenly false (icon :name "wallpaper") (label :text "Wallpapers")))
+      (button :class "nx-tonal" :onclick "sheels nexus sub 2"
+        (box :space-evenly false (icon :name "palette") (label :text "Colours"))))))
+
+(defwidget nx-wall-actions []
+  (box :halign "center" :space-evenly false :class "nx-hero-btns top"
+    (button :class "nx-tonal primary" :onclick "sheels nexus browse"
+      (box :space-evenly false (icon :name "image_search") (label :text "Browse")))
+    (button :class "nx-tonal" :onclick "sheels wallpaper random"
+      (box :space-evenly false (icon :name "shuffle") (label :text "Random")))))
+
+(defwidget nx-wall-hero []
+  (box :orientation "v" :space-evenly false
+    (box :class "nx-hero wide" :style "background-image: url('${theme.thumb}');")
+    (label :class "nx-caption" :text "Featured wallpaper")))
+
+(defwidget nx-wall-grid []
+  (box :orientation "v" :space-evenly false
+    (box :visible {arraylength(nexus.walls) == 0} :class "nx-card"
+      (nx-empty :icon "hide_image" :text "No wallpapers in ~/Pictures/Wallpapers"))
+    (box :class "nx-wallgrid" :orientation "v" :space-evenly false
+      (for row in {nexus.wallRows ?: []}
+        (box :space-evenly false :class "nx-wallrow"
+          (for w in row
+            (button :class "nx-wallitem ${w.current ? 'current' : ''}" :onclick "sheels nexus wall ${w.i}"
+                    :tooltip {w.name}
+              (box :class "nx-wallthumb" :style "background-image: url('${w.thumb}');"))))))))
+
+; ------------------------------------------------------------------ network
+(defwidget nx-wifi-card []
+  (box :class "nx-card" :orientation "v" :space-evenly false
+    (nx-toggle :label "Wi-Fi" :desc "" :on {status.net.wifiEnabled} :cmd "sheels wifi toggle")
+    (box :visible {!status.net.wifiEnabled} :orientation "v"
+      (nx-empty :icon "wifi_off" :text "Wi-Fi disabled"))
+    (box :visible {status.net.wifiEnabled && arraylength(status.net.networks) == 0} :orientation "v"
+      (nx-empty :icon "wifi_find" :text {status.net.scanning ? "Scanning…" : "No networks found"}))
+    (box :visible {status.net.wifiEnabled} :orientation "v" :space-evenly false
+      (for n in {status.net.networks}
+        (button :class "nx-row nx-netrow ${n.active ? 'active' : ''}"
+                :onclick {n.active ? "sheels wifi disconnect" : "sheels wifi connect-idx ${n.i}"}
+          (box :space-evenly false
+            (icon :class "nx-rowicon" :name {n.icon} :fill true)
+            (nx-rowtext :label {n.ssid} :desc {n.active ? "Connected" : n.secure ? "Secured" : "Open"})
+            (icon :class "nx-chev" :visible {n.active} :name "check")))))
+    (box :visible {(ui.wifiAskPassword ?: "") != ""} :class "nx-row" :space-evenly false
+      (label :class "nx-label" :text "Password")
+      (overlay :class "nx-entry" :hexpand true
+        (input :class "nx-entry-input" :password true
+               :onaccept "sheels wifi password <<'__SHEELS_EOF__'
+{}
+__SHEELS_EOF__")))
+    (nx-nav :icon "bookmark" :label "Saved networks" :desc "" :cmd "sheels nexus sub 1")
+    (nx-btnrow :icon "add" :label "Add network" :cmd "sheels nexus sub 2")))
+
+(defwidget nx-vpn-card []
+  (box :class "nx-card" :orientation "v" :space-evenly false
+    (nx-toggle :label "VPN" :desc ""
+               :on {nexus.vpnActive}
+               :cmd {arraylength(nexus.vpns) == 0 ? "sheels nexus vpn-settings" : nexus.vpnActive ? "sheels nexus vpn-off" : "sheels nexus vpn 0"})
+    (box :visible {arraylength(nexus.vpns) == 0} :orientation "v"
+      (nx-empty :icon "add_circle" :text "No VPN providers configured"))
+    (for v in {nexus.vpns}
+      (nx-toggle :label {v.name} :desc {v.active ? "Connected" : ""} :on {v.active} :cmd "sheels nexus vpn ${v.i}"))
+    (nx-btnrow :icon "add" :label "Add provider" :cmd "sheels nexus vpn-settings")))
+
+(defwidget nx-saved-networks []
+  (box :class "nx-card" :orientation "v" :space-evenly false
+    (box :visible {arraylength(nexus.saved) == 0} :orientation "v"
+      (nx-empty :icon "bookmark" :text "No saved networks"))
+    (for n in {nexus.saved}
+      (box :class "nx-row" :space-evenly false
+        (icon :class "nx-rowicon" :name "wifi" :fill true)
+        (nx-rowtext :label {n.name} :desc {n.active ? "Connected" : ""})
+        (button :class "nx-iconbtn" :onclick "sheels nexus saved-connect ${n.i}" :tooltip {n.active ? "Disconnect" : "Connect"}
+          (icon :name {n.active ? "link_off" : "link"}))
+        (button :class "nx-iconbtn danger" :onclick "sheels nexus forget ${n.i}" :tooltip "Forget"
+          (icon :name "delete"))))))
+
+(defwidget nx-add-network []
+  (box :orientation "v" :space-evenly false
+    (box :class "nx-card" :orientation "v" :space-evenly false
+      (box :class "nx-row" :space-evenly false
+        (nx-rowtext :label "Network name" :desc "SSID")
+        (overlay :class "nx-entry wide" :valign "center"
+          (input :class "nx-entry-input" :value {nexus.form.ssid}
+                 :onchange "sheels nexus form-ssid - <<'__SHEELS_EOF__'
+{}
+__SHEELS_EOF__")))
+      (box :class "nx-row" :space-evenly false
+        (nx-rowtext :label "Password" :desc "Leave empty for open networks")
+        (overlay :class "nx-entry wide" :valign "center"
+          (input :class "nx-entry-input" :password true
+                 :onchange "sheels nexus form-pw - <<'__SHEELS_EOF__'
+{}
+__SHEELS_EOF__")))
+      (nx-toggle :label "Hidden network" :desc "The network does not broadcast its name" :on {nexus.form.hidden} :cmd "sheels nexus form-hidden"))
+    (box :space-evenly false :halign "end" :class "nx-formbtns"
+      (label :class "nx-desc" :text {nexus.form.status})
+      (button :class "nx-tonal primary" :onclick "sheels nexus form-connect"
+        (box :space-evenly false (icon :name "wifi_add") (label :text "Connect"))))))
+
+; ------------------------------------------------------------------ bluetooth
+(defwidget nx-bt-card []
+  (box :class "nx-card" :orientation "v" :space-evenly false
+    (nx-toggle :label "Bluetooth" :desc "" :on {status.bt.powered} :cmd "sheels bluetooth toggle")
+    (box :visible {!status.bt.available || !status.bt.powered} :orientation "v"
+      (nx-empty :icon "bluetooth_disabled" :text {status.bt.available ? "Bluetooth disabled" : "No Bluetooth adapter"}))
+    (box :visible {status.bt.powered && arraylength(status.bt.devices) == 0} :orientation "v"
+      (nx-empty :icon "bluetooth_searching" :text {status.bt.discovering ? "Searching…" : "No devices"}))
+    (box :visible {status.bt.powered} :orientation "v" :space-evenly false
+      (for d in {status.bt.devices}
+        (box :class "nx-row ${d.connected ? 'active' : ''}" :space-evenly false
+          (icon :class "nx-rowicon" :name {d.icon} :fill true)
+          (nx-rowtext :label {d.name}
+                      :desc {d.status})
+          (button :class "nx-iconbtn" :onclick "sheels bluetooth ${d.connected ? 'disconnect' : 'connect'} ${d.address}"
+                  :tooltip {d.connected ? "Disconnect" : "Connect"}
+            (icon :name {d.connected ? "link_off" : "link"}))
+          (button :class "nx-iconbtn danger" :visible {d.paired} :onclick "sheels bluetooth forget ${d.address}" :tooltip "Forget"
+            (icon :name "delete")))))
+    (nx-btnrow :icon {status.bt.discovering ? "stop" : "add"}
+               :label {status.bt.discovering ? "Stop searching" : "Pair new device"}
+               :cmd "sheels bluetooth scan")))
+
+(defwidget nx-bt-adapter []
+  (box :class "nx-card ${status.bt.powered ? '' : 'dim'}" :orientation "v" :space-evenly false
+    (nx-toggle :label "Discoverable" :desc "Allow nearby devices to find this one"
+               :on {status.bt.discoverable ?: false} :cmd "sheels bluetooth discoverable")
+    (nx-toggle :label "Pairable" :desc "Allow nearby devices to pair with this one"
+               :on {status.bt.pairable ?: false} :cmd "sheels bluetooth pairable")))
+
+; ------------------------------------------------------------------ audio
+(defwidget nx-audio-card [mic]
+  (box :class "nx-card" :orientation "v" :space-evenly false
+    (box :class "nx-row nx-volrow" :space-evenly false
+      (icon :class "nx-rowicon" :name {mic ? status.audio.micIcon : status.audio.icon} :fill true)
+      (box :orientation "v" :space-evenly false :hexpand true
+        (box :space-evenly false
+          (label :class "nx-label" :xalign 0 :hexpand true :text {mic ? "Input" : "Output"})
+          (label :class "nx-desc" :text "${mic ? status.audio.micVol : status.audio.vol}%"))
+        (scale :class "nx-slider" :hexpand true :min 0 :max 101 :round-digits 0
+               :value {mic ? status.audio.micVol : status.audio.vol}
+               :onchange {mic ? "sheels mic set {}" : "sheels volume set {}"})))
+    (nx-toggle :label "Muted" :desc "" :on {mic ? status.audio.micMuted : status.audio.muted}
+               :cmd {mic ? "sheels mic mute" : "sheels volume mute"})
+    (box :visible {arraylength(mic ? status.audio.sources : status.audio.sinks) == 0} :orientation "v"
+      (nx-empty :icon {mic ? "mic_off" : "speaker"} :text {mic ? "No input devices" : "No output devices"}))
+    (for d in {mic ? status.audio.sources : status.audio.sinks}
+      (button :class "nx-row ${d.active ? 'active' : ''}" :onclick "sheels audio ${mic ? 'source' : 'sink'} ${d.i}"
+        (box :space-evenly false
+          (icon :class "nx-rowicon" :name {mic ? "mic" : "speaker"} :fill {d.active})
+          (nx-rowtext :label {d.desc} :desc {d.active ? "Default" : ""})
+          (icon :class "nx-chev" :visible {d.active} :name "check"))))))
+
+(defwidget nx-app-volumes-row []
+  (box :class "nx-card" :orientation "v"
+    (nx-nav :icon "tune" :label "App volumes"
+            :desc {arraylength(nexus.appVols) == 0 ? "No apps playing audio" : "${arraylength(nexus.appVols)} apps playing audio"}
+            :cmd "sheels nexus sub 1")))
+
+(defwidget nx-app-volumes []
+  (box :class "nx-card" :orientation "v" :space-evenly false
+    (box :visible {arraylength(nexus.appVols) == 0} :orientation "v"
+      (nx-empty :icon "volume_off" :text "No apps playing audio"))
+    (for a in {nexus.appVols}
+      (box :class "nx-row nx-volrow" :space-evenly false
+        (button :class "nx-iconbtn" :onclick "sheels nexus appmute ${a.i}" :tooltip "Mute"
+          (icon :name {a.muted ? "volume_off" : "volume_up"} :fill true))
+        (box :orientation "v" :space-evenly false :hexpand true
+          (box :space-evenly false
+            (label :class "nx-label" :xalign 0 :hexpand true :limit-width 50 :text {a.name})
+            (label :class "nx-desc" :text "${a.vol}%"))
+          (scale :class "nx-slider" :hexpand true :min 0 :max 101 :round-digits 0 :value {a.vol}
+                 :onchange "sheels nexus appvol ${a.i} {}"))))))
+
+; ------------------------------------------------------------------ panels: status icons
+(defwidget nx-status-icons []
+  (box :class "nx-card" :orientation "v" :space-evenly false
+    (for s in {nexus.statusIcons}
+      (box :class "nx-row nx-listrow ${s.on ? '' : 'off'}" :space-evenly false
+        (box :class "nx-reorder" :orientation "v" :valign "center"
+          (button :class "nx-mini" :onclick "sheels nexus status-up ${s.i}" (icon :name "keyboard_arrow_up"))
+          (button :class "nx-mini" :onclick "sheels nexus status-down ${s.i}" (icon :name "keyboard_arrow_down")))
+        (label :class "nx-label" :xalign 0 :hexpand true :text {s.label})
+        (button :class "nx-switchbtn" :onclick "sheels nexus status-toggle ${s.i}" (nx-switch :on {s.on}))
+        (button :class "nx-iconbtn danger" :onclick "sheels nexus status-remove ${s.i}" :tooltip "Remove"
+          (icon :name "delete"))))
+    (nx-btnrow :icon "add" :label "Add entry" :cmd "sheels nexus status-add")))
+
+; ------------------------------------------------------------------ apps
+(defwidget nx-default-app [icon label key value]
+  (box :class "nx-row" :space-evenly false
+    (icon :class "nx-rowicon" :name icon :fill true)
+    (label :class "nx-label" :xalign 0 :hexpand true :text label)
+    (overlay :class "nx-entry" :valign "center"
+      (input :class "nx-entry-input" :value value
+             :onaccept "sheels config set ${key} - <<'__SHEELS_EOF__'
+{}
+__SHEELS_EOF__"))))
+
+(defwidget nx-all-apps []
+  (box :class "nx-card" :orientation "v" :space-evenly false
+    (for a in {nexus.apps}
+      (box :class "nx-row nx-approw ${a.hidden ? 'off' : ''}" :space-evenly false
+        (image :class "nx-appicon" :icon {a.icon} :icon-size "large-toolbar")
+        (label :class "nx-label" :xalign 0 :hexpand true :limit-width 50 :text {a.name})
+        (button :class "nx-iconbtn ${a.fav ? 'on' : ''}" :onclick "sheels nexus app-fav ${a.i}"
+                :tooltip {a.fav ? "Remove from favourites" : "Add to favourites"}
+          (icon :name "star" :fill {a.fav}))
+        (button :class "nx-iconbtn" :onclick "sheels nexus app-hide ${a.i}"
+                :tooltip {a.hidden ? "Show in launcher" : "Hide from launcher"}
+          (icon :name {a.hidden ? "visibility_off" : "visibility"}))))))
+
+; ------------------------------------------------------------------ about
+(defwidget nx-about-hero []
+  (box :class "nx-card nx-about" :orientation "v" :space-evenly false
+    (image :class "nx-about-logo" :path {theme.logo} :image-width 96 :image-height 70 :halign "center")
+    (label :class "nx-about-name" :text "Sheels")
+    (label :class "nx-about-ver" :text "v${nexus.about.shell ?: ''}")
+    (label :class "nx-desc nx-about-sub" :text "A Caelestia Shell clone for driftwm, built on EWW")))

@@ -1,0 +1,124 @@
+; Bar popouts (Caelestia modules/bar/popouts): appear beside the hovered bar
+; item. The window is a full-height column; the daemon sizes a wrapper so the
+; card is centred on the item (popoutH / popoutBottom).
+(defwindow popout [h]
+  :geometry (geometry :anchor "center left" :height "${h}px")
+  :stacking "overlay" :exclusive false :focusable "none" :namespace "sheels-popout"
+  (box :orientation "v" :space-evenly false :valign {ui.popoutBottom ? "end" : "start"}
+       :style "min-height: ${ui.popoutH}px;"
+    (box :orientation "v" :space-evenly false :valign "center" :vexpand true
+      (eventbox :onhover "sheels hover popout" :onhoverlost "sheels unhover popout"
+        (revealer :transition "slideright" :reveal {ui.popout} :duration "300ms"
+          (box :orientation "v" :space-evenly false
+            (box :class "fillet lt" :halign "start")
+            (box :class "panel left popout-panel" :orientation "v" :space-evenly false
+              (stack :selected {ui.popoutName == "network" ? 0 : ui.popoutName == "bluetooth" ? 1 : ui.popoutName == "battery" ? 2 : ui.popoutName == "audio" || ui.popoutName == "microphone" ? 3 : ui.popoutName == "lockstatus" || ui.popoutName == "kblayout" ? 4 : 5}
+                     :transition "crossfade" :same-size false
+                (pop-network) (pop-bluetooth) (pop-battery) (pop-audio) (pop-lock) (pop-window)))
+            (box :class "fillet lb" :halign "start")))))))
+
+(defwidget pop-title [text]
+  (label :class "pop-title" :xalign 0 :text text))
+
+(defwidget pop-network []
+  (box :class "pop pop-net" :orientation "v" :space-evenly false
+    (box :orientation "h" :space-evenly false
+      (pop-title :text "Wi-Fi")
+      (box :hexpand true)
+      (switch :on {status.net.wifiEnabled} :cmd "sheels wifi toggle"))
+    (label :class "pop-sub" :xalign 0
+           :text {status.net.connected ? "Connected to ${status.net.name}" : status.net.wifiEnabled ? "Not connected" : "Wi-Fi is off"})
+    (box :orientation "v" :space-evenly false :class "pop-list" :visible {status.net.wifiEnabled}
+      (for n in {status.net.networks}
+        (button :class "pop-row ${n.active ? 'active' : ''}"
+                :onclick {n.active ? "sheels wifi disconnect" : "sheels wifi connect-idx ${n.i}"}
+          (box :orientation "h" :space-evenly false
+            (label :class "icon ${n.active ? 'c-primary' : ''}" :text {n.icon})
+            (label :class "pop-row-text" :xalign 0 :hexpand true :limit-width 22 :text {n.ssid})
+            (label :class "pop-row-sub" :text {n.band})
+            (label :class "icon" :visible {n.active} :text "link_off")))))
+    (box :visible {(ui.wifiAskPassword ?: "") != ""} :class "pop-password" :orientation "h" :space-evenly false
+      (label :class "icon" :text "password")
+      (input :class "pop-input" :hexpand true :password true
+             :onaccept "sheels wifi password <<'__SHEELS_EOF__'
+{}
+__SHEELS_EOF__"))
+    (box :orientation "h" :space-evenly false :class "pop-actions"
+      (button :class "pop-btn" :onclick "sheels wifi scan"
+        (box :orientation "h" :space-evenly false (label :class "icon" :text {status.net.scanning ? "progress_activity" : "refresh"}) (label :text "Rescan")))
+      (button :class "pop-btn tonal" :onclick "sheels wifi settings"
+        (box :orientation "h" :space-evenly false (label :class "icon" :text "settings") (label :text "Settings"))))))
+
+(defwidget pop-bluetooth []
+  (box :class "pop pop-bt" :orientation "v" :space-evenly false
+    (box :orientation "h" :space-evenly false
+      (pop-title :text "Bluetooth")
+      (box :hexpand true)
+      (switch :on {status.bt.powered} :cmd "sheels bluetooth toggle"))
+    (label :class "pop-sub" :xalign 0
+           :text {!status.bt.available ? "No adapter" : status.bt.connected > 0 ? "${status.bt.connected} connected" : status.bt.powered ? "No devices connected" : "Bluetooth is off"})
+    (box :orientation "v" :space-evenly false :class "pop-list" :visible {status.bt.powered}
+      (for d in {status.bt.devices}
+        (button :class "pop-row ${d.connected ? 'active' : ''}"
+                :onclick "sheels bluetooth ${d.connected ? 'disconnect' : 'connect'} ${d.address}"
+          (box :orientation "h" :space-evenly false
+            (label :class "icon fill ${d.connected ? 'c-primary' : ''}" :text {d.icon})
+            (label :class "pop-row-text" :xalign 0 :hexpand true :limit-width 22 :text {d.name})
+            (label :class "pop-row-sub" :visible {d.battery != "null"} :text "${d.battery ?: ''}${d.battery != 'null' ? '%' : ''}")))))
+    (box :orientation "h" :space-evenly false :class "pop-actions"
+      (button :class "pop-btn" :onclick "sheels bluetooth scan"
+        (box :orientation "h" :space-evenly false (label :class "icon" :text {status.bt.discovering ? "progress_activity" : "bluetooth_searching"}) (label :text {status.bt.discovering ? "Scanning" : "Scan"}))))))
+
+(defwidget pop-battery []
+  (box :class "pop pop-bat" :orientation "v" :space-evenly false
+    (box :orientation "h" :space-evenly false
+      (label :class "icon fill pop-big-icon" :text {status.bat.icon})
+      (box :orientation "v" :space-evenly false :valign "center"
+        (label :class "pop-title" :xalign 0 :text "${status.bat.pct}%")
+        (label :class "pop-sub" :xalign 0
+               :text {status.bat.charging ? "Charging${status.bat.time != '' ? ' · ' + status.bat.time + ' to full' : ''}" : status.bat.full ? "Fully charged" : "${status.bat.time != '' ? status.bat.time + ' remaining' : 'Discharging'}"})))
+    (box :visible {arraylength(status.bat.profiles ?: []) > 0} :orientation "h" :space-evenly true :class "profiles"
+      (for p in {status.bat.profiles ?: []}
+        (button :class "profile ${p == status.bat.profile ? 'on' : ''}" :onclick "sheels power-profile ${p == 'power-saver' ? 'power-saver' : p == 'performance' ? 'performance' : 'balanced'}"
+          (box :orientation "v" :space-evenly false
+            (label :class "icon fill" :text {p == "power-saver" ? "energy_savings_leaf" : p == "performance" ? "rocket_launch" : "balance"})
+            (label :class "profile-name" :text {p == "power-saver" ? "Saver" : p == "performance" ? "Performance" : "Balanced"})))))))
+
+(defwidget pop-audio []
+  (box :class "pop pop-audio" :orientation "v" :space-evenly false
+    (pop-title :text "Audio")
+    (box :orientation "h" :space-evenly false :class "pop-slider-row"
+      (button :class "icon-btn" :onclick "sheels volume mute" (label :class "icon" :text {status.audio.icon}))
+      (scale :class "pop-slider" :hexpand true :min 0 :max 101 :value {status.audio.vol} :onchange "sheels volume set {}")
+      (label :class "pop-row-sub" :text "${status.audio.vol}%"))
+    (box :orientation "h" :space-evenly false :class "pop-slider-row"
+      (button :class "icon-btn" :onclick "sheels mic mute" (label :class "icon" :text {status.audio.micIcon}))
+      (scale :class "pop-slider" :hexpand true :min 0 :max 101 :value {status.audio.micVol} :onchange "sheels mic set {}")
+      (label :class "pop-row-sub" :text "${status.audio.micVol}%"))
+    (label :class "pop-sub" :xalign 0 :text "Output")
+    (for s in {status.audio.sinks}
+      (button :class "pop-row ${s.active ? 'active' : ''}" :onclick "sheels audio sink ${s.i}"
+        (box :orientation "h" :space-evenly false
+          (label :class "icon ${s.active ? 'c-primary' : ''}" :text {s.active ? "radio_button_checked" : "radio_button_unchecked"})
+          (label :class "pop-row-text" :xalign 0 :limit-width 30 :text {s.desc}))))
+    (button :class "pop-btn tonal" :onclick "sheels app audio"
+      (box :orientation "h" :space-evenly false (label :class "icon" :text "settings") (label :text "Open settings")))))
+
+(defwidget pop-lock []
+  (box :class "pop" :orientation "v" :space-evenly false
+    (label :class "pop-sub" :xalign 0 :text "Caps Lock: ${status.bat.caps ? 'on' : 'off'}")
+    (label :class "pop-sub" :xalign 0 :text "Num Lock: ${status.bat.num ? 'on' : 'off'}")
+    (label :class "pop-sub" :xalign 0 :visible {status.kb.layout != ""} :text "Layout: ${status.kb.layout}")))
+
+(defwidget pop-window []
+  (box :class "pop pop-window" :orientation "v" :space-evenly false
+    (box :orientation "h" :space-evenly false
+      (label :class "icon fill pop-big-icon" :text {wm.window.icon})
+      (box :orientation "v" :space-evenly false :valign "center"
+        (label :class "pop-title" :xalign 0 :limit-width 32 :text {wm.window.title})
+        (label :class "pop-sub" :xalign 0 :text {wm.window.app != "" ? wm.window.app : "No window focused"})))
+    (box :orientation "h" :space-evenly true :class "pop-actions" :visible {wm.window.id != 0}
+      (icon-btn :class "tonal" :icon "center_focus_strong" :onclick "sheels window center" :tooltip "Center")
+      (icon-btn :class "tonal" :icon "fullscreen" :onclick "sheels window fullscreen" :tooltip "Fullscreen")
+      (icon-btn :class "tonal" :icon "keep" :onclick "sheels window pin" :tooltip "Pin")
+      (icon-btn :class "filled error" :icon "close" :onclick "sheels window close ${wm.window.id}" :tooltip "Close"))))

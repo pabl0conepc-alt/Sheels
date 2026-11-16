@@ -1,0 +1,48 @@
+; The screen border that Caelestia draws around the desktop. Three strips
+; reserve exclusive space (the bar is the fourth side) and four corner pieces
+; round the inner corners of the usable area.
+
+(defwindow border-top [monitor thickness rounding]
+  :geometry (geometry :width "100%" :height "${thickness}px" :anchor "top center")
+  :stacking "fg" :exclusive true :focusable "none" :namespace "sheels-border"
+  (centerbox :class "border-strip" :orientation "h"
+    (box)
+    ; Hovering the top edge in the middle opens the dashboard (showOnHover).
+    (eventbox :onhover "sheels hover dashboard" :onhoverlost "sheels unhover dashboard"
+      (box :class "dash-trigger" :width 480))
+    (box)))
+
+(defwindow border-right [monitor thickness rounding]
+  :geometry (geometry :width "${thickness}px" :height "100%" :anchor "center right")
+  :stacking "fg" :exclusive true :focusable "none" :namespace "sheels-border"
+  (box :class "border-strip"))
+
+(defwindow border-bottom [monitor thickness rounding]
+  :geometry (geometry :width "100%" :height "${thickness}px" :anchor "bottom center")
+  :stacking "fg" :exclusive true :focusable "none" :namespace "sheels-border"
+  (box :class "border-strip"))
+
+(defwindow corner-tl [monitor thickness rounding]
+  :geometry (geometry :width "${rounding}px" :height "${rounding}px" :anchor "top left")
+  :stacking "fg" :exclusive false :focusable "none" :namespace "sheels-corner"
+  (box :class "corner tl"))
+(defwindow corner-tr [monitor thickness rounding]
+  :geometry (geometry :width "${rounding}px" :height "${rounding}px" :anchor "top right")
+  :stacking "fg" :exclusive false :focusable "none" :namespace "sheels-corner"
+  (box :class "corner tr"))
+(defwindow corner-bl [monitor thickness rounding]
+  :geometry (geometry :width "${rounding}px" :height "${rounding}px" :anchor "bottom left")
+  :stacking "fg" :exclusive false :focusable "none" :namespace "sheels-corner"
+  (box :class "corner bl"))
+(defwindow corner-br [monitor thickness rounding]
+  :geometry (geometry :width "${rounding}px" :height "${rounding}px" :anchor "bottom right")
+  :stacking "fg" :exclusive false :focusable "none" :namespace "sheels-corner"
+  (box :class "corner br"))
+
+; Transparent click-catcher over the usable area: clicking outside a modal
+; panel closes it (Caelestia's focus grab). Dims the screen for the session menu.
+(defwindow catcher [w h]
+  :geometry (geometry :width "${w}px" :height "${h}px" :anchor "center center")
+  :stacking "fg" :exclusive false :focusable "none" :namespace "sheels-catcher"
+  (eventbox :onclick "sheels close" :onrightclick "sheels close" :onmiddleclick "sheels close"
+    (box :class "catcher ${ui.scrim ? 'scrim' : ''}" :hexpand true :vexpand true)))

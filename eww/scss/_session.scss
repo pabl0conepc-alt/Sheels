@@ -1,0 +1,16 @@
+// Session menu — 80px buttons (SessionTokens.button).
+.session-panel { padding: $pad-lg; }
+.session-btn {
+  min-width: 80px; min-height: 80px;
+  margin: $sp-sm 0;
+  border-radius: $rounding-lgi;
+  background-color: $container;
+  transition: background-color $dur-sm $ease, border-radius $dur $ease-expr;
+  &:first-child { margin-top: 0; }
+  &:hover { background-color: mix($onSurface, $surfaceContainer, 8%); }
+  &:focus { background-color: $secondaryContainer; border-radius: $rounding-xl;
+    .session-icon { color: $onSecondaryContainer; } }
+  &:active { border-radius: $rounding-md; }
+}
+.session-icon { font-size: 42px; color: $onSurfaceVariant; }
+.session-gif { margin: $sp-sm 0; }

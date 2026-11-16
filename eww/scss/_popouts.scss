@@ -1,0 +1,46 @@
+// Bar popouts.
+.popout-panel { padding: $pad-md $pad-lg; }
+.pop { min-width: 290px; }
+.pop-title { font-size: fs(14); font-weight: 500; }
+.pop-sub { font-size: fs(11); color: $onSurfaceVariant; margin: 2px 0 $sp-sm 0; }
+.pop-big-icon { font-size: 40px; color: $primary; margin-right: $sp-md; }
+.pop-list { margin: $sp-xs 0; }
+.pop-row {
+  border-radius: $rounding-md;
+  padding: 7px $pad-sm;
+  .icon { font-size: 20px; margin-right: $sp-sm; color: $onSurfaceVariant; }
+  &:hover { background-color: rgba($onSurface, 0.06); }
+  &.active { background-color: $container; }
+}
+.pop-row-text { font-size: fs(12); }
+.pop-row-sub { font-size: fs(10); color: $outline; margin-left: $sp-sm; }
+.pop-actions { margin-top: $sp-sm; }
+.pop-btn {
+  border-radius: $full;
+  padding: 7px 12px;
+  margin-right: $sp-sm;
+  background-color: $container;
+  .icon { font-size: 18px; margin-right: 6px; }
+  label { font-size: fs(11); }
+  &.tonal { background-color: $secondaryContainer; label, .icon { color: $onSecondaryContainer; } }
+  &:hover { background-color: $surfaceContainerHighest; }
+}
+.pop-password {
+  background-color: $container;
+  border-radius: $full;
+  padding: 4px 12px;
+  margin-top: $sp-sm;
+  .icon { color: $primary; margin-right: $sp-sm; }
+}
+.pop-input { min-height: 32px; caret-color: $primary; font-size: fs(12); }
+.pop-slider-row { margin-bottom: $sp-sm; }
+.profiles { margin-top: $sp-md; }
+.profile {
+  border-radius: $rounding-lg;
+  padding: $pad-sm;
+  margin: 0 3px;
+  background-color: $container;
+  .icon { font-size: 24px; color: $onSurfaceVariant; }
+  .profile-name { font-size: fs(10); color: $onSurfaceVariant; }
+  &.on { background-color: $primary; .icon, .profile-name { color: $onPrimary; } }
+}

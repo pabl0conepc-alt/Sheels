@@ -1,0 +1,79 @@
+// Launcher — 600px items, 57px tall (Caelestia LauncherTokens).
+
+.launcher-panel {
+  padding: $pad-lg $pad-lg $pad-sm $pad-lg;
+  min-width: 600px;
+}
+.launcher-results { margin-bottom: $sp-md; }
+.launcher-item {
+  min-width: 600px;
+  min-height: 57px;
+  border-radius: $rounding-lg;
+  padding: 0 $pad-md;
+  transition: background-color $dur-sm $ease;
+  &:hover { background-color: rgba($onSurface, 0.06); }
+  &.sel { background-color: $container; }
+  &.sel:hover { background-color: mix($onSurface, $surfaceContainer, 6%); }
+}
+.launcher-item-icon { min-width: 36px; margin-right: $sp-md; }
+.launcher-mat {
+  min-width: 36px; min-height: 36px;
+  border-radius: $full;
+  background-color: $secondaryContainer;
+  .icon { color: $onSecondaryContainer; font-size: 20px; }
+}
+.launcher-item.action .launcher-mat { background-color: transparent; .icon { color: $onSurface; font-size: 24px; } }
+.launcher-item-name { font-size: fs(14); color: $onSurface; }
+.launcher-item-desc { font-size: fs(12); color: $outline; }
+.launcher-current { color: $primary; font-size: 22px; }
+.scheme-swatch {
+  min-width: 36px; min-height: 36px;
+  border-radius: $full;
+  .swatch { min-width: 9px; min-height: 36px; }
+  .swatch:first-child { border-radius: 18px 0 0 18px; }
+  .swatch:last-child { border-radius: 0 18px 18px 0; }
+}
+
+.launcher-search {
+  background-color: $container;
+  border-radius: $full;
+  min-height: 47px;
+  padding: 0 $pad-lg;
+}
+.launcher-search-icon { color: $onSurfaceVariant; font-size: 20px; margin-right: $sp-md; }
+.launcher-input {
+  background-color: transparent;
+  color: $onSurface;
+  caret-color: $primary;
+  font-size: fs(12);
+  min-height: 47px;
+}
+.launcher-input selection { background-color: rgba($primary, 0.4); }
+.launcher-placeholder { color: $outline; font-size: fs(12); }
+.launcher-clear { border-radius: $full; min-width: 30px; min-height: 30px; .icon { font-size: 18px; color: $onSurfaceVariant; } }
+
+.launcher-empty { min-height: 100px; padding: $pad-lg; }
+.launcher-empty-icon { font-size: 48px; color: $onSurfaceVariant; margin-right: $sp-lg; }
+.launcher-empty-title { font-size: fs(16); font-weight: 500; }
+.launcher-empty-sub { font-size: fs(12); color: $onSurfaceVariant; }
+
+.launcher-walls { padding: $pad-sm 0; }
+.wall-item {
+  margin: 0 $sp-xs;
+  padding: $pad-sm;
+  border-radius: $rounding-lg;
+  transition: background-color $dur-sm $ease;
+  &:hover { background-color: rgba($onSurface, 0.06); }
+  &.sel { background-color: $container; }
+}
+.wall-thumb {
+  min-width: 140px; min-height: 100px;
+  border-radius: $rounding-md;
+  background-size: cover;
+  background-position: center;
+  background-color: $surfaceContainerHighest;
+}
+.wall-item.sel .wall-thumb { min-width: 280px; min-height: 200px; }
+.wall-item.current .wall-thumb { border: 2px solid $primary; }
+.wall-name { font-size: fs(11); color: $onSurfaceVariant; margin-top: 6px; }
+

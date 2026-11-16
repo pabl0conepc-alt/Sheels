@@ -1,0 +1,40 @@
+// Shared controls: icon buttons, switches, sliders.
+.icon-btn {
+  min-width: 32px; min-height: 32px;
+  border-radius: $full;
+  transition: background-color $dur-sm $ease;
+  .icon { font-size: 20px; color: $onSurfaceVariant; }
+  &:hover { background-color: rgba($onSurface, 0.08); }
+  &.active { background-color: $secondaryContainer; .icon { color: $onSecondaryContainer; } }
+  &.tonal { background-color: $secondaryContainer; margin: 0 3px; .icon { color: $onSecondaryContainer; } }
+  &.filled { background-color: $primary; margin: 0 3px; .icon { color: $onPrimary; } }
+  &.filled.error { background-color: $error; .icon { color: $onError; } }
+}
+
+.m3switch-track {
+  min-width: 52px; min-height: 32px;
+  border-radius: $full;
+  background-color: $surfaceContainerHighest;
+  border: 2px solid $outline;
+  transition: background-color $dur-sm $ease;
+}
+.m3switch-thumb {
+  min-width: 24px; min-height: 24px;
+  margin: 0 3px;
+  border-radius: $full;
+  background-color: $outline;
+  .icon { font-size: 16px; color: $surfaceContainerHighest; }
+}
+.m3switch.on {
+  .m3switch-track { background-color: $primary; border-color: $primary; }
+  .m3switch-thumb { background-color: $onPrimary; .icon { color: $onPrimaryContainer; } }
+}
+
+scale.media-slider, scale.pop-slider {
+  trough { min-height: 6px; border-radius: $full; background-color: $surfaceContainerHighest; }
+  highlight { min-height: 6px; border-radius: $full; background-color: $primary; }
+  slider { min-width: 4px; min-height: 22px; border-radius: $full; background-color: $primary; margin: -8px 0; }
+}
+
+scrollbar, scrollbar slider { min-width: 4px; border-radius: $full; }
+scrollbar slider { background-color: rgba($onSurface, 0.3); }

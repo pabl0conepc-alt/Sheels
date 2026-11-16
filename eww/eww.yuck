@@ -1,0 +1,17 @@
+; Sheels — a Caelestia Shell clone for driftwm, rendered with EWW.
+; All data comes from the `sheels` Rust daemon through deflisten streams.
+
+(include "./_gen.yuck")
+(include "./yuck/vars.yuck")
+(include "./yuck/common.yuck")
+(include "./yuck/frame.yuck")
+(include "./yuck/bar.yuck")
+(include "./yuck/popouts.yuck")
+(include "./yuck/dashboard.yuck")
+(include "./yuck/launcher.yuck")
+(include "./yuck/notifs.yuck")
+(include "./yuck/osd.yuck")
+(include "./yuck/session.yuck")
+(include "./yuck/sidebar.yuck")
+(include "./yuck/utilities.yuck")
+(include "./yuck/nexus.yuck")

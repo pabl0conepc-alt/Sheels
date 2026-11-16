@@ -1,0 +1,25 @@
+; Live data from the daemon. Each listener is one tiny `sheels listen`
+; process; values are pushed only when they change.
+(deflisten wm :initial '{"connected":false,"workspaces":[],"activeIdx":-1,"activeName":"","shape":"cookie7","window":{"title":"Desktop","app":"","icon":"desktop_windows","id":0},"windowCount":0}'
+  "sheels listen wm")
+(deflisten status :initial '{"audio":{"vol":0,"muted":false,"icon":"volume_up","micVol":0,"micMuted":false,"micIcon":"mic","sink":"","source":"","sinks":[],"sources":[]},"bright":{"available":false,"pct":0,"icon":"brightness_medium"},"bat":{"present":false,"pct":0,"charging":false,"icon":"battery_full","time":"","profile":"","profiles":[],"caps":false,"num":false,"onAc":true,"power":0},"net":{"wifiEnabled":false,"type":"none","connected":false,"name":"","strength":0,"icon":"wifi_off","networks":[],"scanning":false,"vpn":null},"bt":{"available":false,"powered":false,"icon":"bluetooth_disabled","connected":0,"devices":[],"discovering":false},"kb":{"layout":"","short":""},"dnd":false,"idleInhibit":false,"gamemode":false}'
+  "sheels listen status")
+(deflisten media :initial '{"available":false,"title":"No media","artist":"","album":"","art":"","playing":false,"len":0,"pos":0,"ts":0,"players":[],"identity":"","canNext":false,"canPrev":false}'
+  "sheels listen media")
+(deflisten notifs :initial '{"count":0,"slots":[{"show":false,"used":false},{"show":false,"used":false},{"show":false,"used":false},{"show":false,"used":false},{"show":false,"used":false}],"groups":[]}'
+  "sheels listen notifs")
+(deflisten sys :initial '{"cpu":0,"cpuTemp":"","cpuTempPct":0,"gpu":null,"gpuTemp":"","gpuTempPct":0,"hasGpu":false,"mem":0,"memUsed":"","memTotal":"","storage":[],"down":"","up":"","downHist":[],"upHist":[],"cpuName":"","gpuName":"","totalDown":"","totalUp":"","uptime":""}'
+  "sheels listen sys")
+(deflisten launcher :initial '{"query":"","mode":"apps","items":[],"wallpapers":[],"count":0,"selected":0,"empty":true,"prefix":">"}'
+  "sheels listen launcher")
+; Programmatic launcher text changes only (Tab completion / clear).
+(deflisten lset :initial '{"text":"","n":0}' "sheels listen lset")
+(deflisten ui :initial '{"launcher":false,"dashboard":false,"session":false,"sidebar":false,"utilities":false,"popout":false,"osd":false,"dashTab":0,"popout":"","popoutH":0,"popoutBottom":false,"fullscreen":false,"scrim":false,"wifiAskPassword":"","utilPage":"","barHover":false,"winHover":false,"nexus":false,"dashTabMargin":61,"dashTabIndW":88}'
+  "sheels listen ui")
+(deflisten theme :initial '{"name":"","mode":"dark","variant":"","light":false,"wallpaper":"","logo":"./assets/logo-lock.png","c":{}}'
+  "sheels listen theme")
+(deflisten info :initial '{"user":"","host":"","distro":"","face":"","uptime":"","weather":{"available":false,"temp":"","icon":"cloud","desc":"","days":[],"hours":[]}}'
+  "sheels listen info")
+
+; Shared asset locations (EWW resolves relative paths from the config dir).
+(defvar assets "./assets")

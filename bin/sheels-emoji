@@ -1,0 +1,7 @@
+#!/usr/bin/env sh
+# Emoji picker (caelestia `emoji`): fuzzel over the bundled list, copies result.
+SHARE="${SHEELS_SHARE:-$(dirname "$(readlink -f "$0")")/../share/sheels}"
+LIST="$SHARE/eww/assets/emojis.txt"
+CONF="${XDG_STATE_HOME:-$HOME/.local/state}/sheels/theme/fuzzel.ini"
+choice=$(fuzzel --dmenu --config "$CONF" --prompt "󰞅  " < "$LIST") || exit 0
+printf '%s' "${choice%% *}" | wl-copy

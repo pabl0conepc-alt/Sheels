@@ -1,0 +1,24 @@
+; OSD (Caelestia modules/osd): volume + brightness sliders from the right edge.
+(defwindow osd []
+  :geometry (geometry :anchor "center right")
+  :stacking "overlay" :exclusive false :focusable "none" :namespace "sheels-osd"
+  (eventbox :onhover "sheels hover osd" :onhoverlost "sheels unhover osd"
+    (revealer :transition "slideleft" :reveal {ui.osd} :duration "400ms"
+      (box :orientation "v" :space-evenly false
+        (box :class "fillet rt" :halign "end")
+        (box :class "panel right osd-panel" :orientation "h" :space-evenly false
+          (osd-slider :value {status.audio.vol} :icon {status.audio.icon} :cmd "sheels volume set {}")
+          (box :visible {status.bright.available}
+            (osd-slider :value {status.bright.pct}
+                        :icon "brightness_${round(status.bright.pct / 100 * 6, 0) + 1}"
+                        :cmd "sheels brightness set {}")))
+        (box :class "fillet rb" :halign "end")))))
+
+; Caelestia FilledSlider: pill track, secondary fill, round handle with icon.
+(defwidget osd-slider [value icon cmd]
+  (overlay :class "osd-slider"
+    (scale :class "filled-slider" :orientation "v" :flipped true :min 0 :max 101
+           :value value :onchange cmd)
+    (box :class "osd-handle" :valign "start" :halign "center"
+         :style "margin-top: ${(100 - (value > 100 ? 100 : value)) * 1.2}px;"
+      (label :class "icon fill osd-handle-icon" :text icon))))

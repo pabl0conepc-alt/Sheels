@@ -1,0 +1,140 @@
+// Sheels — Caelestia look for EWW (GTK3 CSS via SCSS).
+// Colours come from the generated `_theme.scss` (Material 3 roles, the
+// same names Caelestia uses). Tokens below mirror Caelestia's tokens.hpp.
+@import "theme";
+
+// ---------------------------------------------------------------- tokens
+$rounding-xs: 4px;  $rounding-sm: 8px;  $rounding-md: 12px; $rounding-lg: 16px;
+$rounding-lgi: 20px; $rounding-xl: 28px; $rounding-xli: 32px; $rounding-xxl: 48px;
+$full: 999px;
+$sp-xs: 4px; $sp-sm: 8px; $sp-md: 12px; $sp-lg: 16px; $sp-lgi: 20px; $sp-xl: 28px; $sp-xli: 32px;
+$pad-xs: 4px; $pad-sm: 8px; $pad-md: 12px; $pad-lg: 16px; $pad-lgi: 20px; $pad-xl: 28px; $pad-xli: 32px;
+
+$font: "Google Sans Flex", "GoogleSansFlex", "Rubik", sans-serif;
+$font-clock: "Rubik", $font;
+$font-mono: "CaskaydiaCove NF", "CaskaydiaCove Nerd Font", monospace;
+$font-icon: "Material Symbols Rounded";
+
+// Caelestia sizes are Qt point sizes; GTK uses the same 96 dpi conversion.
+@function fs($pt) { @return $pt * $font-scale * 1pt; }
+
+$dur-sm: 200ms * $anim-scale;
+$dur: 400ms * $anim-scale;
+$dur-lg: 600ms * $anim-scale;
+// Material 3 standard / emphasized-decel easing.
+$ease: cubic-bezier(0.2, 0, 0, 1);
+$ease-decel: cubic-bezier(0.05, 0.7, 0.1, 1);
+$ease-expr: cubic-bezier(0.38, 1.21, 0.22, 1);
+
+// Surfaces (with optional transparency, like Caelestia's tPalette).
+$bg: rgba($surface, $t-base);
+$container: rgba($surfaceContainer, if($transparency, $t-layers, 1));
+$container-high: rgba($surfaceContainerHigh, if($transparency, $t-layers, 1));
+$container-highest: rgba($surfaceContainerHighest, if($transparency, $t-layers, 1));
+
+@mixin state($base, $on, $hover: 0.08, $press: 0.12) {
+  background-color: $base;
+  transition: background-color $dur-sm $ease;
+  &:hover { background-color: mix($on, $base, $hover * 100%); }
+  &:active { background-color: mix($on, $base, $press * 100%); }
+}
+
+// ---------------------------------------------------------------- reset
+* {
+  all: unset;
+  font-family: $font;
+  font-size: fs(11);
+  color: $onSurface;
+  -gtk-icon-shadow: none;
+  text-shadow: none;
+  box-shadow: none;
+}
+
+tooltip, tooltip * {
+  background-color: $inverseSurface;
+  color: $inverseOnSurface;
+  border-radius: $rounding-sm;
+  padding: 4px 8px;
+}
+
+.icon {
+  font-family: $font-icon;
+  font-size: 20px;
+  font-weight: 400;
+}
+.icon.sm { font-size: 20px; }
+.icon.md { font-size: 24px; }
+.icon.lg { font-size: 32px; }
+.icon.xl { font-size: 48px; }
+
+.headline-l { font-size: fs(32); font-weight: 500; }
+.headline-m { font-size: fs(28); font-weight: 500; }
+.headline-s { font-size: fs(24); font-weight: 500; }
+.title-l { font-size: fs(22); font-weight: 500; }
+.title-m { font-size: fs(16); font-weight: 500; }
+.title-s { font-size: fs(14); font-weight: 500; }
+.body-l { font-size: fs(16); }
+.body-m { font-size: fs(14); }
+.body-s { font-size: fs(12); }
+.label-l { font-size: fs(14); font-weight: 500; }
+.label-m { font-size: fs(12); font-weight: 500; }
+.label-s { font-size: fs(11); }
+.mono { font-family: $font-mono; }
+
+.c-primary { color: $primary; }
+.c-secondary { color: $secondary; }
+.c-tertiary { color: $tertiary; }
+.c-error { color: $error; }
+.c-outline { color: $outline; }
+.c-variant { color: $onSurfaceVariant; }
+
+// ---------------------------------------------------------------- frame
+// The screen border (Caelestia's "drawers" blob): three strips + the bar,
+// and concave corner pieces that round the usable area.
+.border-strip { background-color: $bg; }
+
+.corner {
+  min-width: $border-rounding;
+  min-height: $border-rounding;
+}
+// radial gradient: transparent quarter disc, surface colour outside it.
+@mixin fillet($pos, $r: $rounding-xl) {
+  background-image: radial-gradient(circle $r at $pos, transparent $r - 0.75px, $bg $r + 0.25px);
+}
+.corner.tl { @include fillet(100% 100%, $border-rounding); }
+.corner.tr { @include fillet(0% 100%, $border-rounding); }
+.corner.bl { @include fillet(100% 0%, $border-rounding); }
+.corner.br { @include fillet(0% 0%, $border-rounding); }
+
+// Panel junction fillets: same idea, sized to the panel rounding.
+.fillet { min-width: $rounding-xl; min-height: $rounding-xl; }
+.fillet.tl { @include fillet(0% 100%); }  // left of a top panel
+.fillet.tr { @include fillet(100% 100%); } // right of a top panel
+.fillet.bl { @include fillet(0% 0%); }     // left of a bottom panel
+.fillet.br { @include fillet(100% 0%); }   // right of a bottom panel
+.fillet.rt { @include fillet(0% 0%); }   // above a right panel
+.fillet.rb { @include fillet(0% 100%); } // below a right panel
+.fillet.lt { @include fillet(100% 0%); }     // above a left (bar) popout
+.fillet.lb { @include fillet(100% 100%); }   // below a left (bar) popout
+
+.panel { background-color: $bg; }
+.panel.top { border-radius: 0 0 $rounding-xl $rounding-xl; }
+.panel.bottom { border-radius: $rounding-xl $rounding-xl 0 0; }
+.panel.right { border-radius: $rounding-xl 0 0 $rounding-xl; }
+.panel.left { border-radius: 0 $rounding-xl $rounding-xl 0; }
+.panel.top-right { border-radius: 0 0 0 $rounding-xl; }
+.panel.bottom-right { border-radius: $rounding-xl 0 0 0; }
+
+.catcher { background-color: transparent; }
+.catcher.scrim { background-color: rgba($scrim, 0.5); transition: background-color $dur $ease; }
+
+@import "scss/bar";
+@import "scss/dashboard";
+@import "scss/launcher";
+@import "scss/notifs";
+@import "scss/osd";
+@import "scss/session";
+@import "scss/sidebar";
+@import "scss/popouts";
+@import "scss/controls";
+@import "scss/nexus";
