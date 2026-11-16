@@ -23,7 +23,9 @@ in
   config = lib.mkIf cfg.enable (lib.mkMerge [
     {
       programs.driftwm.enable = true;
-      environment.systemPackages = [ sheels ];
+      # The driftwm autostart (idle/lock, clipboard history) and the default
+      # terminal binding run outside the sheels wrapper: put them on PATH.
+      environment.systemPackages = [ sheels ] ++ (with pkgs; [ swayidle wl-clipboard cliphist foot ]);
 
       fonts.packages = with pkgs; [
         sheels # Google Sans Flex (bundled)
