@@ -224,6 +224,7 @@ pub async fn dispatch(a: Vec<String>) -> Result<String> {
             app.info.cal_cmd(sub);
             Ok(String::new())
         }
+        "ws" | "workspace" if sub == "idx" => app.wm.goto(&format!("idx {}", arg(&a, 2))).await,
         "ws" | "workspace" => app.wm.goto(sub).await,
         "ws-scroll" => app.wm.scroll(sub).await,
         "window" => app.wm.window_cmd(sub, arg(&a, 2)).await,

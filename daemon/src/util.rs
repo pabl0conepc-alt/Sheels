@@ -43,8 +43,8 @@ pub fn share_dir() -> PathBuf {
     if let Some(p) = std::env::var_os("SHEELS_SHARE") {
         return PathBuf::from(p);
     }
-    if let Ok(exe) = std::env::current_exe() {
-        if let Some(prefix) = exe.parent().and_then(|p| p.parent()) {
+    if let Ok(exe) = std::env::current_exe()
+        && let Some(prefix) = exe.parent().and_then(|p| p.parent()) {
             let cand = prefix.join("share/sheels");
             if cand.join("eww/eww.yuck").exists() {
                 return cand;
@@ -56,7 +56,6 @@ pub fn share_dir() -> PathBuf {
                 }
             }
         }
-    }
     PathBuf::from("/usr/share/sheels")
 }
 
@@ -185,5 +184,14 @@ pub fn clamp<T: PartialOrd>(v: T, lo: T, hi: T) -> T {
         hi
     } else {
         v
+    }
+}
+
+/// Give freed heap back to the OS after a burst of allocations (image
+/// decoding for colour extraction / thumbnails). glibc keeps it otherwise.
+pub fn trim_heap() {
+    #[cfg(target_env = "gnu")]
+    unsafe {
+        libc::malloc_trim(0);
     }
 }

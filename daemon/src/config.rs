@@ -6,6 +6,7 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(default, rename_all = "camelCase")]
+#[derive(Default)]
 pub struct Config {
     pub general: General,
     pub bar: Bar,
@@ -22,25 +23,6 @@ pub struct Config {
     pub appearance: Appearance,
 }
 
-impl Default for Config {
-    fn default() -> Self {
-        Config {
-            general: General::default(),
-            bar: Bar::default(),
-            border: Border::default(),
-            launcher: Launcher::default(),
-            notifs: Notifs::default(),
-            osd: Osd::default(),
-            dashboard: Dashboard::default(),
-            services: Services::default(),
-            session: Session::default(),
-            paths: Paths::default(),
-            driftwm: Driftwm::default(),
-            lock: Lock::default(),
-            appearance: Appearance::default(),
-        }
-    }
-}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(default, rename_all = "camelCase")]

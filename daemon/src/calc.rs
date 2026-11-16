@@ -6,14 +6,13 @@ pub async fn eval(expr: &str) -> Option<String> {
     if expr.is_empty() {
         return None;
     }
-    if crate::util::which("qalc") {
-        if let Some(out) = crate::util::run(&["qalc", "-t", "-set", "autocalc off", expr], 2000).await {
+    if crate::util::which("qalc")
+        && let Some(out) = crate::util::run(&["qalc", "-t", "-set", "autocalc off", expr], 2000).await {
             let r = out.trim().to_string();
             if !r.is_empty() && !r.to_lowercase().contains("error") {
                 return Some(r);
             }
         }
-    }
     let v = Parser { s: expr.as_bytes(), i: 0 }.parse()?;
     if !v.is_finite() {
         return None;
@@ -175,5 +174,33 @@ impl Parser<'_> {
             });
         }
         None
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    fn ev(s: &str) -> Option<f64> {
+        super::Parser { s: s.as_bytes(), i: 0 }.parse()
+    }
+    #[test]
+    fn arithmetic() {
+        assert_eq!(ev("2+3*4"), Some(14.0));
+        assert_eq!(ev("(2+3)*4"), Some(20.0));
+        assert_eq!(ev("2^3^2"), Some(512.0));
+        assert_eq!(ev("-3+5"), Some(2.0));
+        assert_eq!(ev("10%3"), Some(1.0));
+        assert_eq!(ev("5!"), Some(120.0));
+        assert_eq!(ev("2(3)"), Some(6.0));
+        assert_eq!(ev("1.5e3"), Some(1500.0));
+        assert!((ev("sqrt(16)+sin(0)").unwrap() - 4.0).abs() < 1e-9);
+        assert!((ev("pi").unwrap() - std::f64::consts::PI).abs() < 1e-12);
+    }
+    #[test]
+    fn rejects_garbage() {
+        assert_eq!(ev("2+"), None);
+        assert_eq!(ev("foo(2)"), None);
+        assert_eq!(ev("(1"), None);
+        assert_eq!(ev("1)"), None);
+        assert_eq!(ev(""), None);
     }
 }

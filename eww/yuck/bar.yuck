@@ -42,7 +42,7 @@
       (box :orientation "v" :space-evenly false :class "ws-list"
         (for ws in {wm.workspaces}
           (button :class "ws ${ws.active ? 'active' : ws.occupied ? 'occupied' : 'empty'}"
-                  :onclick "sheels ws ${ws.name}" :tooltip "Bookmark ${ws.name}"
+                  :onclick "sheels ws idx ${ws.i}" :tooltip "Bookmark ${ws.name}"
             (box :orientation "v" :space-evenly false
               (box :class "ws-shape-area" :halign "center" :valign "center"
                 (image :visible {ws.active}

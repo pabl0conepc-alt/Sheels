@@ -109,8 +109,8 @@ fn detect_gpu(pref: &str) -> (Option<String>, Option<PathBuf>, Option<PathBuf>, 
         return (None, None, None, String::new());
     }
     // AMD (and recent Intel xe) expose gpu_busy_percent in sysfs: free to read.
-    if pref == "auto" || pref == "amd" || pref == "intel" {
-        if let Ok(rd) = std::fs::read_dir("/sys/class/drm") {
+    if (pref == "auto" || pref == "amd" || pref == "intel")
+        && let Ok(rd) = std::fs::read_dir("/sys/class/drm") {
             for e in rd.flatten() {
                 let n = e.file_name().to_string_lossy().to_string();
                 if !n.starts_with("card") || n.contains('-') {
@@ -129,7 +129,6 @@ fn detect_gpu(pref: &str) -> (Option<String>, Option<PathBuf>, Option<PathBuf>, 
                 }
             }
         }
-    }
     if (pref == "auto" || pref == "nvidia") && crate::util::which("nvidia-smi") {
         return (Some("nvidia".into()), None, None, "NVIDIA GPU".into());
     }
@@ -206,7 +205,7 @@ impl SysMon {
                 }
                 _ => 0.0,
             };
-            let cpu_temp = i.cpu_temp_path.as_ref().and_then(|p| read_num::<f64>(p)).map(|t| t / 1000.0);
+            let cpu_temp = i.cpu_temp_path.as_ref().and_then(read_num::<f64>).map(|t| t / 1000.0);
             let mem = meminfo();
             let (rx, tx) = net_bytes();
             let now = Instant::now();
@@ -232,8 +231,8 @@ impl SysMon {
                 i.storage = storage();
                 i.storage_at = Some(now);
             }
-            let gpu_busy = i.gpu_busy_path.as_ref().and_then(|p| read_num::<f64>(p)).map(|v| v / 100.0);
-            let gpu_temp = i.gpu_temp_path.as_ref().and_then(|p| read_num::<f64>(p)).map(|t| t / 1000.0);
+            let gpu_busy = i.gpu_busy_path.as_ref().and_then(read_num::<f64>).map(|v| v / 100.0);
+            let gpu_temp = i.gpu_temp_path.as_ref().and_then(read_num::<f64>).map(|t| t / 1000.0);
             (cpu_pct, cpu_temp, mem, (down, up), i.gpu_kind.clone(), gpu_busy, gpu_temp)
         };
         let (gpu_busy, gpu_temp) = if gpu_kind.as_deref() == Some("nvidia") {

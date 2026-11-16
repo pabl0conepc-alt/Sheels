@@ -173,8 +173,8 @@ impl Wm {
     }
 
     async fn refresh_bookmarks(&self) {
-        if let Ok(v) = request(&json!({ "Bookmark": {} })).await {
-            if let Some(map) = v.get("Bookmarks").and_then(Value::as_object) {
+        if let Ok(v) = request(&json!({ "Bookmark": {} })).await
+            && let Some(map) = v.get("Bookmarks").and_then(Value::as_object) {
                 let mut list: Vec<(String, f64, f64)> = map
                     .iter()
                     .filter_map(|(k, p)| {
@@ -182,10 +182,9 @@ impl Wm {
                         Some((k.clone(), a.first()?.as_f64()?, a.get(1)?.as_f64()?))
                     })
                     .collect();
-                list.sort_by(|a, b| natural_key(&a.0).cmp(&natural_key(&b.0)));
+                list.sort_by_key(|a| natural_key(&a.0));
                 self.inner.lock().unwrap().bookmarks = list;
             }
-        }
     }
 
     async fn process(&self, st: StateInfo) {
@@ -240,7 +239,7 @@ impl Wm {
 
         let live: Vec<&WinInfo> = st.windows.iter().filter(|w| !w.is_widget && !w.suspended).collect();
         let mut wss = vec![];
-        for (name, bx, by) in i.bookmarks.iter().take(shown) {
+        for (idx, (name, bx, by)) in i.bookmarks.iter().take(shown).enumerate() {
             // A bookmark is "occupied" when a window overlaps the viewport-sized
             // area centred on it.
             let icons: Vec<&'static str> = live
@@ -256,6 +255,7 @@ impl Wm {
             let is_active = active.as_deref() == Some(name.as_str());
             wss.push(json!({
                 "name": name,
+                "i": idx,
                 "active": is_active,
                 "occupied": !icons.is_empty(),
                 "icons": icons,
@@ -286,7 +286,7 @@ impl Wm {
             "workspaces": wss,
             "activeIdx": active_idx,
             "indTop": ind_top,
-            "listH": wss.iter().map(|w| slot_h(w)).sum::<i64>() + 4 * (wss.len() as i64 - 1).max(0),
+            "listH": wss.iter().map(slot_h).sum::<i64>() + 4 * (wss.len() as i64 - 1).max(0),
             "indH": ind_h,
             "activeName": active.unwrap_or_default(),
             "shape": SHAPES[i.shape % SHAPES.len()],
@@ -304,8 +304,20 @@ impl Wm {
 
     pub async fn goto(&self, name: &str) -> Result<String> {
         if name.is_empty() {
-            bail!("ws <bookmark>");
+            bail!("ws <bookmark>|idx <n>");
         }
+        // `ws idx N` addresses the Nth bookmark so names never reach a shell.
+        let name = match name.strip_prefix("idx ").map(|n| n.trim().parse::<usize>()) {
+            Some(Ok(n)) => {
+                let i = self.inner.lock().unwrap();
+                match i.bookmarks.get(n) {
+                    Some(b) => b.0.clone(),
+                    None => bail!("no bookmark {n}"),
+                }
+            }
+            Some(Err(_)) => bail!("ws idx <n>"),
+            None => name.to_string(),
+        };
         action(&format!("go-to-bookmark {name}")).await?;
         Ok(String::new())
     }
@@ -397,11 +409,10 @@ pub async fn run() {
                         last = Instant::now();
                         if let Ok(v) = serde_json::from_str::<Value>(&l) {
                             let st = v.get("State").or_else(|| v.get("Ok").and_then(|o| o.get("State")));
-                            if let Some(st) = st.cloned() {
-                                if let Ok(st) = serde_json::from_value::<StateInfo>(st) {
+                            if let Some(st) = st.cloned()
+                                && let Ok(st) = serde_json::from_value::<StateInfo>(st) {
                                     wm.process(st).await;
                                 }
-                            }
                         }
                     }
                 }

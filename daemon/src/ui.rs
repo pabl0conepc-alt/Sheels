@@ -220,12 +220,23 @@ impl Ui {
 
     pub async fn toggle(&self, name: &str) -> Result<String> {
         let Some(k) = key(name) else { bail!("unknown panel {name:?}") };
-        if self.is_shown(k) { self.hide(k).await } else { self.show(k, false).await }
+        if self.is_shown(k) {
+            self.hide(k).await
+        } else if k == "osd" {
+            self.osd().await
+        } else {
+            self.show(k, false).await
+        }
         Ok(String::new())
     }
 
     pub async fn open(&self, name: &str) -> Result<String> {
         let Some(k) = key(name) else { bail!("unknown panel {name:?}") };
+        if k == "osd" {
+            // The OSD always hides itself after osd.hideDelay.
+            self.osd().await;
+            return Ok(String::new());
+        }
         self.show(k, false).await;
         Ok(String::new())
     }
@@ -238,7 +249,7 @@ impl Ui {
 
     pub async fn close_all(&self) {
         for p in ALL {
-            if *p != "osd" && self.is_shown(p) {
+            if self.is_shown(p) {
                 self.hide(p).await;
             }
         }

@@ -292,11 +292,10 @@ fn weekday(date: &str) -> String {
 
 pub async fn run() {
     let info = &app().info;
-    if let Ok(s) = std::fs::read_to_string(crate::util::state_dir().join("weather.json")) {
-        if let Ok(v) = serde_json::from_str::<Value>(&s) {
+    if let Ok(s) = std::fs::read_to_string(crate::util::state_dir().join("weather.json"))
+        && let Ok(v) = serde_json::from_str::<Value>(&s) {
             info.inner.lock().unwrap().weather = v;
         }
-    }
     info.publish();
     loop {
         let stale = info.inner.lock().unwrap().weather_at.map(|t| t.elapsed() > Duration::from_secs(1800)).unwrap_or(true);

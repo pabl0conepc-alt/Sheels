@@ -125,10 +125,7 @@ fn clean_exec(exec: &str) -> String {
     let mut chars = exec.chars().peekable();
     while let Some(c) = chars.next() {
         if c == '%' {
-            match chars.next() {
-                Some('%') => out.push('%'),
-                _ => {}
-            }
+            if let Some('%') = chars.next() { out.push('%') }
         } else {
             out.push(c);
         }
@@ -226,11 +223,10 @@ impl Launcher {
     }
 
     fn load_frecency(&self) {
-        if let Ok(s) = std::fs::read_to_string(crate::util::state_dir().join("launcher.json")) {
-            if let Ok(m) = serde_json::from_str::<HashMap<String, u32>>(&s) {
+        if let Ok(s) = std::fs::read_to_string(crate::util::state_dir().join("launcher.json"))
+            && let Ok(m) = serde_json::from_str::<HashMap<String, u32>>(&s) {
                 self.inner.lock().unwrap().frecency = m;
             }
-        }
     }
 
     fn maybe_reload(&self) {
@@ -381,7 +377,7 @@ impl Launcher {
                                              "current": id == cur, "colours": colours})))
                         })
                         .collect();
-                    v.sort_by(|a, b| b.0.cmp(&a.0));
+                    v.sort_by_key(|x| std::cmp::Reverse(x.0));
                     items = v.into_iter().map(|x| x.1).collect();
                 }
                 ("variant", true) => {
@@ -423,7 +419,7 @@ impl Launcher {
                         })
                         .collect();
                     if !q.is_empty() {
-                        v.sort_by(|a, b| b.0.cmp(&a.0));
+                        v.sort_by_key(|x| std::cmp::Reverse(x.0));
                     }
                     items = v.into_iter().map(|x| x.1).collect();
                 }
@@ -511,8 +507,8 @@ impl Launcher {
             return; // outdated
         }
         let mut v: Value = app().hub.get("launcher").and_then(|s| serde_json::from_str(&s).ok()).unwrap_or(Value::Null);
-        if let Some(items) = v["items"].as_array_mut() {
-            if let Some(it) = items.first_mut() {
+        if let Some(items) = v["items"].as_array_mut()
+            && let Some(it) = items.first_mut() {
                 match &r {
                     Some(res) => {
                         it["name"] = Value::from(res.clone());
@@ -524,12 +520,10 @@ impl Launcher {
                     }
                 }
             }
-        }
-        if let Some(items) = self.inner.lock().unwrap().items.first_mut() {
-            if let Some(res) = &r {
+        if let Some(items) = self.inner.lock().unwrap().items.first_mut()
+            && let Some(res) = &r {
                 items["id"] = Value::from(res.clone());
             }
-        }
         app().hub.publish("launcher", &v);
     }
 
@@ -663,13 +657,12 @@ impl Launcher {
                         let i = self.inner.lock().unwrap();
                         i.items.get(i.selected).cloned()
                     };
-                    if let Some(it) = item {
-                        if let Some(word) = it["id"].as_str().and_then(|s| s.strip_prefix("autocomplete ")) {
+                    if let Some(it) = item
+                        && let Some(word) = it["id"].as_str().and_then(|s| s.strip_prefix("autocomplete ")) {
                             let p = crate::app::cfg().launcher.action_prefix.clone();
                             self.set_query(format!("{p}{word} "));
                             return Ok(String::new());
                         }
-                    }
                 }
                 if changed || clean != arg {
                     self.update();
@@ -730,5 +723,26 @@ impl Launcher {
             _ => bail!("launcher query|accept|activate <i>|select <i>|move up|down|set <text>|reload"),
         }
         Ok(String::new())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn fuzzy_ranking() {
+        let exact = score("firefox", "Firefox").unwrap();
+        let prefix = score("fire", "Firefox").unwrap();
+        let word = score("fox", "Fire Fox").unwrap();
+        let sub = score("ffx", "Firefox").unwrap();
+        assert!(exact > prefix && prefix > word && word > sub);
+        assert!(score("zzz", "Firefox").is_none());
+        assert_eq!(score("", "anything"), Some(0));
+    }
+    #[test]
+    fn exec_field_codes() {
+        assert_eq!(clean_exec("firefox %u"), "firefox");
+        assert_eq!(clean_exec("app --flag %F --x"), "app --flag --x");
+        assert_eq!(clean_exec("echo 100%%"), "echo 100%");
     }
 }

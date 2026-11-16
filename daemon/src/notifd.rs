@@ -153,6 +153,7 @@ fn save_image_data(id: u32, v: &Variant<'_>) -> Option<String> {
     let _ = std::fs::create_dir_all(&dir);
     let path = dir.join(format!("{id}.png"));
     img.save(&path).ok()?;
+    crate::util::trim_heap();
     Some(path.to_string_lossy().into_owned())
 }
 
@@ -471,13 +472,12 @@ impl Notifd {
 
     fn load(&self) {
         let path = crate::util::state_dir().join("notifs.json");
-        if let Ok(s) = std::fs::read_to_string(path) {
-            if let Ok(list) = serde_json::from_str::<Vec<Notif>>(&s) {
+        if let Ok(s) = std::fs::read_to_string(path)
+            && let Ok(list) = serde_json::from_str::<Vec<Notif>>(&s) {
                 let mut i = self.inner.lock().unwrap();
                 i.next_id = list.iter().map(|n| n.id).max().unwrap_or(0);
                 i.list = list;
             }
-        }
     }
 }
 
@@ -490,21 +490,19 @@ fn format_clock(t: u64) -> String {
 }
 
 async fn emit_closed(id: u32, reason: u32) {
-    if let Some(conn) = app().session_bus.get() {
-        if let Ok(e) = SignalEmitter::new(conn, PATH) {
+    if let Some(conn) = app().session_bus.get()
+        && let Ok(e) = SignalEmitter::new(conn, PATH) {
             let _ = Server::notification_closed(&e, id, reason).await;
         }
-    }
 }
 
 async fn emit_action(id: u32, key: &str) {
-    if let Some(conn) = app().session_bus.get() {
-        if let Ok(e) = SignalEmitter::new(conn, PATH) {
+    if let Some(conn) = app().session_bus.get()
+        && let Ok(e) = SignalEmitter::new(conn, PATH) {
             let _ = Server::action_invoked(&e, id, key).await;
             // Activation token so the target app may raise itself.
             let _ = Server::activation_token(&e, id, "").await;
         }
-    }
 }
 
 struct Server;
@@ -541,23 +539,21 @@ impl Server {
         };
         let mut image = String::new();
         for k in ["image-data", "image_data", "icon_data"] {
-            if let Some(v) = hints.get(k) {
-                if let Some(p) = save_image_data(provisional, v) {
+            if let Some(v) = hints.get(k)
+                && let Some(p) = save_image_data(provisional, v) {
                     image = p;
                     break;
                 }
-            }
         }
         let mut icon = String::new();
-        if image.is_empty() {
-            if let Some(p) = hint_str("image-path").or_else(|| hint_str("image_path")) {
+        if image.is_empty()
+            && let Some(p) = hint_str("image-path").or_else(|| hint_str("image_path")) {
                 if is_path(&p) {
                     image = p.trim_start_matches("file://").to_string();
                 } else {
                     icon = p;
                 }
             }
-        }
         if !app_icon.is_empty() {
             if is_path(&app_icon) {
                 if image.is_empty() {
@@ -567,11 +563,10 @@ impl Server {
                 icon = app_icon.clone();
             }
         }
-        if icon.is_empty() {
-            if let Some(de) = hint_str("desktop-entry") {
+        if icon.is_empty()
+            && let Some(de) = hint_str("desktop-entry") {
                 icon = app().launcher.icon_for(&de).unwrap_or_default();
             }
-        }
         let summary = strip_markup(&summary);
         let n = Notif {
             id: 0,
@@ -631,5 +626,21 @@ pub async fn run() {
                 if !n.inner.lock().unwrap().list.is_empty() { n.publish(); }
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn markup_is_stripped() {
+        assert_eq!(strip_markup("<b>Hi</b> &amp; <a href='x'>link</a>"), "Hi & link");
+        assert_eq!(strip_markup("a &lt; b"), "a < b");
+    }
+    #[test]
+    fn mat_icons() {
+        assert_eq!(notif_mat_icon("Screenshot taken", 1), "screenshot_monitor");
+        assert_eq!(notif_mat_icon("hello", 2), "release_alert");
+        assert_eq!(notif_mat_icon("hello", 1), "chat");
     }
 }

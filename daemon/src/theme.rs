@@ -410,6 +410,7 @@ pub async fn ensure_thumbnails() {
         made |= ok;
     }
     RUNNING.store(false, std::sync::atomic::Ordering::SeqCst);
+    crate::util::trim_heap();
     if made {
         // Refresh the launcher so new thumbnails show up.
         let _ = app().launcher.command("set", &[app().hub.get("launcher").and_then(|s| serde_json::from_str::<Value>(&s).ok())
@@ -472,6 +473,7 @@ impl Theme {
             .await
             .ok()
             .flatten();
+            crate::util::trim_heap();
             let (src, v, m) = res.unwrap_or((Rgb::from_u32(0xa8627b), st.variant.clone(), st.mode.clone()));
             if smart_on {
                 st2.variant = v;
@@ -646,10 +648,6 @@ impl Theme {
 }
 
 // ---------------------------------------------------------------- outputs
-
-fn render(template: &str, st: &SchemeState) -> String {
-    render_with(template, st, false)
-}
 
 /// `{{ name.hex }}` / `{{ name.rgb }}` (sheels) and `{{ $name }}` (caelestia-cli
 /// templates, `hash` decides whether a leading '#' is added).
@@ -873,4 +871,52 @@ pub async fn screenshot(kind: &str) -> Result<String> {
     crate::util::spawn_sh(&format!("wl-copy < {}", crate::util::shell_quote(&name)));
     app().notifs.internal("Screenshot taken", &format!("Saved to {name} and copied to the clipboard"), "screenshot_monitor", false);
     Ok(name)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    fn st() -> SchemeState {
+        let mut s = SchemeState::default();
+        s.colours = gen_scheme(Rgb::from_u32(0xa8627b), "tonalspot", false, "default");
+        s
+    }
+    #[test]
+    fn scheme_has_caelestia_roles() {
+        let s = st();
+        for k in ["primary", "onPrimary", "surface", "surfaceContainer", "outlineVariant", "term0", "term15", "success", "primary_paletteKeyColor"] {
+            let v = s.colours.get(k).unwrap_or_else(|| panic!("missing {k}"));
+            assert_eq!(v.len(), 6, "{k}={v}");
+            assert!(u32::from_str_radix(v, 16).is_ok());
+        }
+    }
+    #[test]
+    fn light_differs_from_dark() {
+        let d = gen_scheme(Rgb::from_u32(0x4285f4), "vibrant", false, "default");
+        let l = gen_scheme(Rgb::from_u32(0x4285f4), "vibrant", true, "default");
+        assert_ne!(d["surface"], l["surface"]);
+    }
+    #[test]
+    fn template_syntaxes() {
+        let s = st();
+        let p = &s.colours["primary"];
+        assert_eq!(render_with("{{ primary.hex }}", &s, false), *p);
+        assert_eq!(render_with("{{ $primary }}", &s, false), *p);
+        assert_eq!(render_with("{{ $primary }}", &s, true), format!("#{p}"));
+        assert_eq!(render_with("{{ mode }}", &s, false), "dark");
+        assert_eq!(render_with("{{ nope.hex }}", &s, false), "{{ nope.hex }}");
+        assert!(render_with("{{ primary.rgb }}", &s, false).contains(", "));
+        assert_eq!(render_with("a {{ unterminated", &s, false), "a {{ unterminated");
+    }
+    #[test]
+    fn camel_names() {
+        assert_eq!(camel("on_primary_container"), "onPrimaryContainer");
+    }
+    #[test]
+    fn source_colour_picks_chroma() {
+        let mut px = vec![Rgb::from_u32(0x101010); 500];
+        px.extend(vec![Rgb::from_u32(0xd03030); 300]);
+        let c = source_colour(&px);
+        assert!(c.red > c.blue, "expected reddish source, got {c:?}");
+    }
 }

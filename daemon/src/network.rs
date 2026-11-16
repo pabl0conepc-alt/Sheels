@@ -233,11 +233,10 @@ impl Network {
                     "off" => false,
                     _ => !self.inner.lock().unwrap().snap.wifi_enabled,
                 };
-                if let Some(conn) = app().system_bus.get() {
-                    if crate::dbus::set(conn, NM, NM_PATH, NM, "WirelessEnabled", zbus::Variant::from(on)).await.is_err() {
+                if let Some(conn) = app().system_bus.get()
+                    && crate::dbus::set(conn, NM, NM_PATH, NM, "WirelessEnabled", zbus::Variant::from(on)).await.is_err() {
                         crate::util::run_ok(&["nmcli", "radio", "wifi", if on { "on" } else { "off" }], 5000).await;
                     }
-                }
             }
             "scan" => {
                 tokio::spawn(async { app().net.scan().await });
@@ -345,5 +344,15 @@ pub async fn run() {
                 net.refresh().await;
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn wifi_icons() {
+        assert_eq!(super::wifi_icon(100, false), "network_wifi");
+        assert_eq!(super::wifi_icon(10, true), "signal_wifi_0_bar");
+        assert_eq!(super::wifi_icon(45, true), "network_wifi_2_bar_locked");
     }
 }

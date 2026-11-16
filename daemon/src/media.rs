@@ -22,7 +22,6 @@ struct Player {
     bus: String,
     owner: String,
     identity: String,
-    desktop: String,
     status: String,
     title: String,
     artist: String,
@@ -36,7 +35,6 @@ struct Player {
     can_prev: bool,
     can_play: bool,
     can_seek: bool,
-    volume: f64,
 }
 
 #[derive(Default)]
@@ -61,13 +59,12 @@ fn url_decode(s: &str) -> String {
     let mut out = Vec::with_capacity(b.len());
     let mut i = 0;
     while i < b.len() {
-        if b[i] == b'%' && i + 2 < b.len() {
-            if let Ok(v) = u8::from_str_radix(&s[i + 1..i + 3], 16) {
+        if b[i] == b'%' && i + 2 < b.len()
+            && let Ok(v) = u8::from_str_radix(&s[i + 1..i + 3], 16) {
                 out.push(v);
                 i += 3;
                 continue;
             }
-        }
         out.push(b[i]);
         i += 1;
     }
@@ -150,7 +147,6 @@ impl Media {
             bus: bus.to_string(),
             owner,
             identity,
-            desktop: s(&root["DesktopEntry"]),
             status: s(&pl["PlaybackStatus"]),
             title: s(&md["xesam:title"]),
             artist,
@@ -164,7 +160,6 @@ impl Media {
             can_prev: pl["CanGoPrevious"].as_bool().unwrap_or(false),
             can_play: pl["CanPlay"].as_bool().unwrap_or(true),
             can_seek: pl["CanSeek"].as_bool().unwrap_or(false),
-            volume: pl["Volume"].as_f64().unwrap_or(1.0),
         })
     }
 
@@ -363,5 +358,13 @@ pub async fn run() {
             }
         }
     }
-    let _ = media.inner.lock().unwrap().players.iter().map(|p| (&p.desktop, p.volume)).count();
+}
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn url_decoding() {
+        assert_eq!(super::url_decode("/a%20b/c%C3%A9.png"), "/a b/cé.png");
+        assert_eq!(super::url_decode("100%"), "100%");
+    }
 }

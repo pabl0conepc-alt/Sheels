@@ -76,13 +76,12 @@ impl Bluetooth {
         let mut devs = vec![];
         if let Some(map) = objs.as_object() {
             for (path, ifaces) in map {
-                if let Some(a) = ifaces.get("org.bluez.Adapter1") {
-                    if inner.adapter.is_empty() {
+                if let Some(a) = ifaces.get("org.bluez.Adapter1")
+                    && inner.adapter.is_empty() {
                         inner.adapter = path.clone();
                         inner.powered = a["Powered"].as_bool().unwrap_or(false);
                         inner.discovering = a["Discovering"].as_bool().unwrap_or(false);
                     }
-                }
                 if let Some(d) = ifaces.get("org.bluez.Device1") {
                     let name = s(&d["Alias"]);
                     let paired = d["Paired"].as_bool().unwrap_or(false);

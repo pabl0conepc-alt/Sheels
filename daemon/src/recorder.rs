@@ -30,11 +30,10 @@ impl Recorder {
     pub fn json(&self) -> Value {
         let mut i = self.inner.lock().unwrap();
         // Reap a recorder that exited on its own.
-        if let Some(c) = i.child.as_mut() {
-            if let Ok(Some(_)) = c.try_wait() {
+        if let Some(c) = i.child.as_mut()
+            && let Ok(Some(_)) = c.try_wait() {
                 i.child = None;
             }
-        }
         json!({ "running": i.child.is_some(), "paused": i.paused, "started": i.started / 1000 })
     }
 
@@ -47,7 +46,7 @@ impl Recorder {
                     .collect()
             })
             .unwrap_or_default();
-        files.sort_by(|a, b| b.0.cmp(&a.0));
+        files.sort_by_key(|x| std::cmp::Reverse(x.0));
         Value::Array(
             files
                 .iter()

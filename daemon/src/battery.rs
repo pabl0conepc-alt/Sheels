@@ -258,8 +258,8 @@ pub async fn run() {
         tokio::time::sleep(Duration::from_secs(1)).await;
         tick += 1;
         let mut changed = b.read_leds();
-        if tick % 15 == 0 {
-            if tick % 300 == 0 {
+        if tick.is_multiple_of(15) {
+            if tick.is_multiple_of(300) {
                 b.scan();
             }
             changed |= b.read();
@@ -268,5 +268,19 @@ pub async fn run() {
         if changed {
             app().publish_status();
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn battery_icons_match_caelestia() {
+        assert_eq!(super::battery_icon(100.0, false), "battery_full");
+        assert_eq!(super::battery_icon(100.0, true), "battery_charging_full");
+        assert_eq!(super::battery_icon(50.0, false), "battery_3_bar");
+        assert_eq!(super::battery_icon(5.0, false), "battery_0_bar");
+        // Caelestia skips some charging levels (4 → 3, 1 → 0).
+        assert_eq!(super::battery_icon(60.0, true), "battery_charging_60");
+        assert_eq!(super::battery_icon(20.0, true), "battery_charging_30");
     }
 }
