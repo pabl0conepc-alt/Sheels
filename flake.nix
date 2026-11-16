@@ -23,7 +23,10 @@
 
       overlays.default = final: _prev: { sheels = final.callPackage ./nix/package.nix { }; };
 
-      nixosModules.default = import ./nix/nixos.nix { inherit self driftwm; };
+      # `sheels`: the shell only (use it if you already import driftwm's module).
+      # `default`: driftwm's module + the shell.
+      nixosModules.sheels = import ./nix/nixos.nix { sheelsFor = pkgs: self.packages.${pkgs.stdenv.hostPlatform.system}.default; };
+      nixosModules.default = { imports = [ driftwm.nixosModules.default self.nixosModules.sheels ]; };
       homeManagerModules.default = import ./nix/home.nix { inherit self; };
       homeModules.default = self.homeManagerModules.default;
 

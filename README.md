@@ -78,52 +78,73 @@ O Caelestia desenha a moldura e os painéis como um único SDF ("blob"). No EWW/
 
 ---
 
-## Instalação (NixOS, flake)
+## Instalação (NixOS)
+
+São 3 passos em qualquer caso: **(1)** adicionar o módulo, **(2)** `nixos-rebuild switch`, **(3)** rodar `sheels setup` uma vez. O `sheels setup` instala a config do driftwm com os atalhos do Caelestia (e o shell no `autostart`), guardando a sua anterior como `config.toml.bak`. Ele também cria `~/Pictures/Wallpapers` e confere se está tudo instalado.
+
+### A) Sem flakes (o mais simples)
+
+No `/etc/nixos/configuration.nix`:
 
 ```nix
-# flake.nix
+{
+  imports = [
+    ./hardware-configuration.nix
+    "${builtins.fetchTarball "https://github.com/pabl0conepc-alt/Sheels/archive/main.tar.gz"}/nix/module.nix"
+  ];
+
+  programs.sheels.enable = true;
+  # programs.driftwm.enable = true;   # se o driftwm ainda não estiver configurado
+}
+```
+
+### B) Com flakes
+
+No `/etc/nixos/flake.nix`, acrescente o input e o módulo:
+
+```nix
 {
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
     sheels.url = "github:pabl0conepc-alt/Sheels";
     sheels.inputs.nixpkgs.follows = "nixpkgs";
-    home-manager.url = "github:nix-community/home-manager";
   };
 
-  outputs = { nixpkgs, sheels, home-manager, ... }: {
-    nixosConfigurations.meupc = nixpkgs.lib.nixosSystem {
+  outputs = { nixpkgs, sheels, ... }: {
+    nixosConfigurations.nixos = nixpkgs.lib.nixosSystem {   # "nixos" = nome da máquina (hostname)
       system = "x86_64-linux";
       modules = [
         ./configuration.nix
-        sheels.nixosModules.default
-        {
-          programs.sheels.enable = true;          # driftwm + shell + fontes + serviços
-          programs.sheels.greeter.enable = true;  # login gráfico (greetd + ReGreet) no estilo Caelestia
-        }
-        home-manager.nixosModules.home-manager
-        {
-          home-manager.users.SEU_USUARIO = {
-            imports = [ sheels.homeManagerModules.default ];
-            programs.sheels = {
-              enable = true;        # pacote + config do driftwm (atalhos do Caelestia)
-              terminal = true;      # foot + fish + starship + fastfetch + btop do Caelestia
-              gtkTheme = true;      # apps GTK seguem o esquema de cores
-              settings = {          # = ~/.config/sheels/shell.json
-                services.weatherLocation = "São Paulo";
-                bar.workspaces.shown = 5;
-              };
-            };
-          };
-        }
+        sheels.nixosModules.default   # driftwm + Sheels
+        # sheels.nixosModules.sheels  # use este se o driftwm já está no seu config
+        { programs.sheels.enable = true; }
       ];
     };
   };
 }
 ```
 
-O módulo NixOS ativa o driftwm (pelo módulo do próprio driftwm), as fontes (Material Symbols Rounded, Rubik, CaskaydiaCove NF, JetBrains Mono NF e Google Sans Flex), NetworkManager, Bluetooth, PipeWire, power-profiles-daemon, UPower, o PAM do hyprlock e o portal XDG. Depois de reiniciar, escolha **driftwm** no login. A config do driftwm inclui `sheels daemon` no `autostart`.
+### C) Com Home Manager
 
-Para testar sem instalar: `nix run github:pabl0conepc-alt/Sheels -- daemon`, rodando dentro de uma sessão driftwm.
+`sheels.homeManagerModules.default` com `programs.sheels.enable = true;` instala o shell e a config do driftwm. Com `terminal = true;` vem também foot, fish, starship, fastfetch e btop configurados como no Caelestia, e com `gtkTheme = true;` os apps GTK seguem as cores do wallpaper. O módulo NixOS continua necessário para os serviços (rede, Bluetooth, PAM do lock).
+
+### Depois
+
+```bash
+sudo nixos-rebuild switch
+```
+
+```bash
+sheels setup
+```
+
+Saia da sessão, escolha **driftwm** na tela de login e o shell abre sozinho. Para um login no estilo Caelestia (greetd + ReGreet), adicione `programs.sheels.greeter.enable = true;` e desative o gerenciador de login atual (SDDM/GDM).
+
+O módulo instala as fontes (Material Symbols Rounded, Rubik, CaskaydiaCove NF, JetBrains Mono NF e Google Sans Flex) e liga NetworkManager, Bluetooth, PipeWire, power-profiles-daemon, UPower, o PAM do hyprlock e o portal XDG.
+
+> **A primeira instalação compila o daemon e o EWW** (o EWW leva um patch). Leva alguns minutos e o build do EWW é limitado a 2 jobs para caber em máquinas com pouca RAM. Se ainda assim faltar memória, use `sudo nixos-rebuild switch --option cores 1`.
+
+Para testar sem instalar, dentro de uma sessão driftwm: `nix run github:pabl0conepc-alt/Sheels -- daemon`.
 
 ---
 

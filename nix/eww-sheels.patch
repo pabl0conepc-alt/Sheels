@@ -1,6 +1,137 @@
---- a/crates/eww/src/widgets/widget_definitions.rs	2026-11-16 10:05:45.894171053 +0000
-+++ b/crates/eww/src/widgets/widget_definitions.rs	2026-11-16 10:15:06.734716722 +0000
-@@ -496,7 +496,11 @@
+diff -ruN a/crates/eww/src/state/scope_graph.rs b/crates/eww/src/state/scope_graph.rs
+--- a/crates/eww/src/state/scope_graph.rs
++++ b/crates/eww/src/state/scope_graph.rs
+@@ -282,6 +282,11 @@
+         // Now find subscopes that reference this variable
+         let affected_subscopes = self.graph.subscopes_referencing(scope_index, updated_var);
+         for affected_subscope in affected_subscopes {
++            // (sheels) a listener above (e.g. a `literal` rebuilding its
++            // content) may already have removed this subscope.
++            if self.graph.scope_at(affected_subscope).is_none() {
++                continue;
++            }
+             self.notify_value_changed(affected_subscope, updated_var)?;
+         }
+         Ok(())
+@@ -294,7 +299,10 @@
+             for listener in triggered_listeners.clone() {
+                 let required_variables = self.lookup_variables_in_scope(scope_index, &listener.needed_variables)?;
+                 if let Err(err) = (*listener.f)(self, required_variables).context("Error while updating UI after state change") {
+-                    error_handling_ctx::print_error(err);
++                    // (sheels) updates for widgets destroyed in this same pass are expected
++                    if !format!("{err:?}").contains("widget got deallocated") {
++                        error_handling_ctx::print_error(err);
++                    }
+                 }
+             }
+         }
+diff -ruN a/crates/eww/src/widgets/build_widget.rs b/crates/eww/src/widgets/build_widget.rs
+--- a/crates/eww/src/widgets/build_widget.rs
++++ b/crates/eww/src/widgets/build_widget.rs
+@@ -235,6 +235,8 @@
+                 let created_children = Rc::new(RefCell::new(Vec::<gtk::Widget>::new()));
+                 let created_child_scopes = Rc::new(RefCell::new(Vec::<ScopeIndex>::new()));
+                 let gtk_container = gtk_container.clone();
++                // (sheels) rebuild the children only when the element list really changed
++                let last_elements = RefCell::new(None::<Vec<String>>);
+                 move |tree, values| {
+                     let elements_value = elements_expr
+                         .eval(&values)?
+@@ -244,6 +246,14 @@
+                         .iter()
+                         .map(DynVal::from)
+                         .collect_vec();
++                    {
++                        let key: Vec<String> = elements_value.iter().map(|e| e.0.clone()).collect();
++                        let mut last = last_elements.borrow_mut();
++                        if last.as_ref() == Some(&key) {
++                            return Ok(());
++                        }
++                        *last = Some(key);
++                    }
+                     let mut created_children = created_children.borrow_mut();
+                     for old_child in created_children.drain(..) {
+                         gtk_container.remove(&old_child);
+@@ -266,6 +276,9 @@
+                         let new_child_widget =
+                             build_gtk_widget(tree, widget_defs.clone(), scope, body.clone(), custom_widget_invocation.clone())?;
+                         gtk_container.add(&new_child_widget);
++                        // (sheels) widgets built after the window's show_all() must be shown
++                        // explicitly (hidden ones are marked no_show_all and stay hidden).
++                        new_child_widget.show_all();
+                         created_children.push(new_child_widget);
+                     }
+ 
+diff -ruN a/crates/eww/src/widgets/def_widget_macro.rs b/crates/eww/src/widgets/def_widget_macro.rs
+--- a/crates/eww/src/widgets/def_widget_macro.rs
++++ b/crates/eww/src/widgets/def_widget_macro.rs
+@@ -46,6 +46,8 @@
+                                 // create a weak reference to the widget, such that this listener doesn't prevent the actual widget from
+                                 // getting deallocated (garbage collected by the gtk runtime)
+                                 let $gtk_widget = gdk::glib::clone::Downgrade::downgrade(&$gtk_widget);
++                                // (sheels) last evaluated attribute values, to skip no-op updates
++                                let last_values = ::std::cell::RefCell::new(None::<Vec<Option<String>>>);
+                                 move |$scope_graph, values| {
+                                     // TODO when this fails, shouldn't we technically remove the listener somehow? Need to analyze when exactly this happens.
+                                     let $gtk_widget = gdk::glib::clone::Upgrade::upgrade(&$gtk_widget)
+@@ -56,6 +58,22 @@
+                                     // allow $gtk_widget to never be used, by creating a reference that gets immediately discarded
+                                     {let _ = &$gtk_widget;};
+ 
++                                    // (sheels) GTK setters are not free (e.g. GtkLabel queues a resize even
++                                    // for identical text): only apply when some attribute value changed.
++                                    {
++                                        let key: Vec<Option<String>> = vec![$(
++                                            match attr_map.get(::std::stringify!($attr_name)) {
++                                                Some(Some(x)) => Some(x.eval(&values)?.0),
++                                                _ => None,
++                                            }
++                                        ),*];
++                                        let mut last = last_values.borrow_mut();
++                                        if last.as_ref() == Some(&key) {
++                                            return Ok(());
++                                        }
++                                        *last = Some(key);
++                                    }
++
+                                     // We first initialize all the local variables for all the expected attributes in scope
+                                     $(
+                                         // get the simplexprs from the attr_map
+diff -ruN a/crates/eww/src/widgets/widget_definitions.rs b/crates/eww/src/widgets/widget_definitions.rs
+--- a/crates/eww/src/widgets/widget_definitions.rs
++++ b/crates/eww/src/widgets/widget_definitions.rs
+@@ -154,11 +154,15 @@
+         let visible_expr = bargs.widget_use.attrs.attrs.get("visible").map(|x| x.value.as_simplexpr()).transpose()?;
+         if let Some(visible_expr) = visible_expr {
+             let visible = bargs.scope_graph.evaluate_simplexpr_in_scope(bargs.calling_scope, &visible_expr)?.as_bool()?;
++            // (sheels) apply the *current* visibility on first map: the value captured
++            // at build time may be stale if the variable changed before the window
++            // was mapped (the `visible` prop keeps no_show_all = !visible up to date).
++            gtk_widget.set_no_show_all(!visible);
+             connect_first_map(gtk_widget, move |w| {
+-                if visible {
+-                    w.show();
+-                } else {
++                if w.is_no_show_all() {
+                     w.hide();
++                } else {
++                    w.show();
+                 }
+             });
+         }
+@@ -207,7 +211,10 @@
+         },
+         // @prop visible - visibility of the widget
+         prop(visible: as_bool = true) {
+-            if visible { gtk_widget.show(); } else { gtk_widget.hide(); }
++            // (sheels) hidden widgets opt out of show_all; shown ones show their whole
++            // subtree, so children created while an ancestor was hidden appear too.
++            gtk_widget.set_no_show_all(!visible);
++            if visible { gtk_widget.show_all(); } else { gtk_widget.hide(); }
+         },
+         // @prop style - inline scss style applied to the widget
+         prop(style: as_string) {
+@@ -496,7 +503,11 @@
      def_widget!(bargs, _g, gtk_widget, {
          // @prop value - the content of the text field
          prop(value: as_string) {
@@ -13,7 +144,7 @@
          },
          // @prop onchange - Command to run when the text changes. The placeholder `{}` will be replaced by the value
          // @prop timeout - timeout of the command. Default: "200ms"
-@@ -515,6 +519,36 @@
+@@ -515,6 +526,36 @@
          // @prop password - if the input is obscured
          prop(password: as_bool = false) {
              gtk_widget.set_visibility(!password);
@@ -50,89 +181,12 @@
          }
      });
      Ok(gtk_widget)
---- a/crates/eww/src/state/scope_graph.rs
-+++ b/crates/eww/src/state/scope_graph.rs
-@@ -282,6 +282,11 @@
-         // Now find subscopes that reference this variable
-         let affected_subscopes = self.graph.subscopes_referencing(scope_index, updated_var);
-         for affected_subscope in affected_subscopes {
-+            // (sheels) a listener above (e.g. a `literal` rebuilding its
-+            // content) may already have removed this subscope.
-+            if self.graph.scope_at(affected_subscope).is_none() {
-+                continue;
-+            }
-             self.notify_value_changed(affected_subscope, updated_var)?;
-         }
-         Ok(())
-@@ -294,7 +299,10 @@
-             for listener in triggered_listeners.clone() {
-                 let required_variables = self.lookup_variables_in_scope(scope_index, &listener.needed_variables)?;
-                 if let Err(err) = (*listener.f)(self, required_variables).context("Error while updating UI after state change") {
--                    error_handling_ctx::print_error(err);
-+                    // (sheels) updates for widgets destroyed in this same pass are expected
-+                    if !format!("{err:?}").contains("widget got deallocated") {
-+                        error_handling_ctx::print_error(err);
-+                    }
-                 }
+@@ -1109,7 +1150,7 @@
+                         DiagError(diagnostic)
+                     })?;
+                 gtk_widget.add(&child_widget);
+-                child_widget.show();
++                child_widget.show_all();
              }
          }
---- a/crates/eww/src/widgets/def_widget_macro.rs
-+++ b/crates/eww/src/widgets/def_widget_macro.rs
-@@ -46,6 +46,8 @@
-                                 // create a weak reference to the widget, such that this listener doesn't prevent the actual widget from
-                                 // getting deallocated (garbage collected by the gtk runtime)
-                                 let $gtk_widget = gdk::glib::clone::Downgrade::downgrade(&$gtk_widget);
-+                                // (sheels) last evaluated attribute values, to skip no-op updates
-+                                let last_values = ::std::cell::RefCell::new(None::<Vec<Option<String>>>);
-                                 move |$scope_graph, values| {
-                                     // TODO when this fails, shouldn't we technically remove the listener somehow? Need to analyze when exactly this happens.
-                                     let $gtk_widget = gdk::glib::clone::Upgrade::upgrade(&$gtk_widget)
-@@ -56,6 +58,22 @@
-                                     // allow $gtk_widget to never be used, by creating a reference that gets immediately discarded
-                                     {let _ = &$gtk_widget;};
- 
-+                                    // (sheels) GTK setters are not free (e.g. GtkLabel queues a resize even
-+                                    // for identical text): only apply when some attribute value changed.
-+                                    {
-+                                        let key: Vec<Option<String>> = vec![$(
-+                                            match attr_map.get(::std::stringify!($attr_name)) {
-+                                                Some(Some(x)) => Some(x.eval(&values)?.0),
-+                                                _ => None,
-+                                            }
-+                                        ),*];
-+                                        let mut last = last_values.borrow_mut();
-+                                        if last.as_ref() == Some(&key) {
-+                                            return Ok(());
-+                                        }
-+                                        *last = Some(key);
-+                                    }
-+
-                                     // We first initialize all the local variables for all the expected attributes in scope
-                                     $(
-                                         // get the simplexprs from the attr_map
---- a/crates/eww/src/widgets/build_widget.rs
-+++ b/crates/eww/src/widgets/build_widget.rs
-@@ -235,6 +235,8 @@
-                 let created_children = Rc::new(RefCell::new(Vec::<gtk::Widget>::new()));
-                 let created_child_scopes = Rc::new(RefCell::new(Vec::<ScopeIndex>::new()));
-                 let gtk_container = gtk_container.clone();
-+                // (sheels) rebuild the children only when the element list really changed
-+                let last_elements = RefCell::new(None::<Vec<String>>);
-                 move |tree, values| {
-                     let elements_value = elements_expr
-                         .eval(&values)?
-@@ -244,6 +246,14 @@
-                         .iter()
-                         .map(DynVal::from)
-                         .collect_vec();
-+                    {
-+                        let key: Vec<String> = elements_value.iter().map(|e| e.0.clone()).collect();
-+                        let mut last = last_elements.borrow_mut();
-+                        if last.as_ref() == Some(&key) {
-+                            return Ok(());
-+                        }
-+                        *last = Some(key);
-+                    }
-                     let mut created_children = created_children.borrow_mut();
-                     for old_child in created_children.drain(..) {
-                         gtk_container.remove(&old_child);
+     });
