@@ -3,6 +3,7 @@
 (defwindow session []
   :geometry (geometry :anchor "center right")
   :stacking "overlay" :exclusive false :focusable "exclusive" :namespace "sheels-session"
+  (eventbox :onhover "sheels hover session" :onhoverlost "sheels unhover session"
   (revealer :transition "slideleft" :reveal {ui.session} :duration "400ms"
     (box :orientation "v" :space-evenly false
       (box :class "fillet rt" :halign "end")
@@ -12,7 +13,7 @@
         (image :class "session-gif" :path "${assets}/kurukuru-80.gif")
         (session-btn :icon "downloading" :cmd "sheels session hibernate" :tip "Hibernate")
         (session-btn :icon "cached" :cmd "sheels session reboot" :tip "Reboot"))
-      (box :class "fillet rb" :halign "end"))))
+      (box :class "fillet rb" :halign "end")))))
 
 (defwidget session-btn [icon cmd tip]
   (button :class "session-btn" :onclick cmd :tooltip tip

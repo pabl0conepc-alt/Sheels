@@ -479,9 +479,9 @@ impl Launcher {
                 })
                 .collect();
             v.sort_by(|a, b| b.0.cmp(&a.0).then(a.1.name.to_lowercase().cmp(&b.1.name.to_lowercase())));
+            // Every app is reachable (only the visible window is published).
             items = v
                 .into_iter()
-                .take(64)
                 .map(|(_, a)| {
                     json!({"kind": "app", "name": a.name, "desc": if a.comment.is_empty() { &a.generic } else { &a.comment },
                            "icon": a.icon, "id": a.id, "matIcon": "apps"})
@@ -708,8 +708,8 @@ impl Launcher {
                         app().ui.close("launcher").await?;
                         return Ok(String::new());
                     }
-                    "Up" => -1,
-                    "Down" => 1,
+                    "Up" | "up" => -1,
+                    "Down" | "down" => 1,
                     // Ctrl+hjkl (launcher.vimKeybinds), reported by the patched EWW input.
                     "C-k" | "C-h" if crate::app::cfg().launcher.vim_keybinds => -1,
                     "C-j" | "C-l" if crate::app::cfg().launcher.vim_keybinds => 1,

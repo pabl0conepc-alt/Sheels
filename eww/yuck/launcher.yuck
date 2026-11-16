@@ -47,7 +47,8 @@ __SHEELS_EOF__"
         (label :class "launcher-empty-title" :xalign 0 :text "No results")
         (label :class "launcher-empty-sub" :xalign 0 :text "Try searching for something else")))
     ; Lists
-    (box :visible {launcher.mode != "wallpapers"} :orientation "v" :space-evenly false
+    (eventbox :visible {launcher.mode != "wallpapers"} :onscroll "sheels launcher key {}"
+    (box :orientation "v" :space-evenly false
       (for it in {launcher.items}
         (eventbox :class "launcher-item ${it.sel ? 'sel' : ''} ${it.kind}" :cursor "pointer"
                 :onclick "sheels launcher activate ${it.idx}"
@@ -62,4 +63,4 @@ __SHEELS_EOF__"
             (box :orientation "v" :space-evenly false :valign "center" :hexpand true :class "launcher-item-text"
               (label :class "launcher-item-name" :xalign 0 :limit-width 60 :text {it.name})
               (label :class "launcher-item-desc" :xalign 0 :limit-width 70 :visible {(it.desc ?: "") != ""} :text {it.desc ?: ""}))
-            (box :visible {it.current ?: false} (icon :class "launcher-current" :name "check_circle" :fill true))))))))
+            (box :visible {it.current ?: false} (icon :class "launcher-current" :name "check_circle" :fill true)))))))))

@@ -47,6 +47,19 @@ fn walk_has(dir: &Path, needle: &str, depth: u32) -> bool {
     false
 }
 
+/// System keyboard layout from `localectl` (NixOS: services.xserver.xkb.*).
+fn system_layout() -> Option<(String, String)> {
+    let out = Command::new("localectl").arg("status").output().ok()?;
+    let text = String::from_utf8_lossy(&out.stdout).into_owned();
+    let field = |k: &str| {
+        text.lines()
+            .find_map(|l| l.trim().strip_prefix(k).map(|v| v.trim().to_string()))
+            .filter(|v| !v.is_empty() && v.chars().all(|c| c.is_ascii_alphanumeric() || ",_-".contains(c)))
+    };
+    let layout = field("X11 Layout:")?;
+    Some((layout, field("X11 Variant:").unwrap_or_default()))
+}
+
 pub fn run(args: &[String]) -> i32 {
     let force = args.iter().any(|a| a == "--force");
     let check_only = args.iter().any(|a| a == "--check");
@@ -67,6 +80,21 @@ pub fn run(args: &[String]) -> i32 {
     } else {
         match std::fs::read_to_string(&src) {
             Ok(new) => {
+                // Keep the system keyboard layout (the template says "us").
+                let new = match system_layout() {
+                    Some((layout, variant)) => {
+                        let mut out = new.replace("layout = \"us\"", &format!("layout = \"{layout}\""));
+                        if !variant.is_empty() {
+                            out = out.replace(
+                                &format!("layout = \"{layout}\""),
+                                &format!("layout = \"{layout}\"\nvariant = \"{variant}\""),
+                            );
+                        }
+                        ok(&format!("keyboard layout: {layout}{}", if variant.is_empty() { String::new() } else { format!(" ({variant})") }));
+                        out
+                    }
+                    None => new,
+                };
                 let _ = std::fs::create_dir_all(target.parent().unwrap());
                 if target.exists() {
                     let bak = target.with_extension("toml.bak");

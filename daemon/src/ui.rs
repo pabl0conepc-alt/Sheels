@@ -343,7 +343,11 @@ impl Ui {
             if p.shown && p.mapped {
                 return;
             }
-            !p.mapped
+            // Claim the mapping now: two hover events arriving together must
+            // not both open the window (the second one would linger unseen).
+            let need = !p.mapped;
+            p.mapped = true;
+            need
         };
         if k == "launcher" {
             app().launcher.reset();
@@ -371,7 +375,6 @@ impl Ui {
                 _ => {}
             }
             app().eww.open(Self::window_for(k), Self::window_for(k), screen.as_deref(), &args).await;
-            self.st.lock().unwrap().panels.entry(k).or_default().mapped = true;
             // Let GTK map the window with the revealer collapsed first.
             tokio::time::sleep(Duration::from_millis(25)).await;
         }
@@ -472,6 +475,11 @@ impl Ui {
             "bar" => {
                 self.set_misc("barHover", Value::Bool(true));
             }
+            "session" => {
+                if !self.is_shown("session") {
+                    self.show("session", true).await;
+                }
+            }
             item if item.starts_with("popout:") => {
                 let name = item.trim_start_matches("popout:").to_string();
                 let _ = extra;
@@ -535,6 +543,12 @@ impl Ui {
                 }
                 "bar" => {
                     ui.set_misc("barHover", Value::Bool(false));
+                }
+                "session" => {
+                    let via_hover = ui.st.lock().unwrap().panels.get("session").map(|p| p.via_hover).unwrap_or(false);
+                    if via_hover {
+                        ui.hide("session").await;
+                    }
                 }
                 "osd" => {
                     ui.osd().await;
