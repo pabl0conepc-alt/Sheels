@@ -177,7 +177,7 @@ async fn apply(key: &str) {
     match top {
         "appearance" | "border" | "background" | "driftwm" | "paths" => a.theme.apply_current().await,
         "services" if key == "services.smartScheme" => a.theme.apply_current().await,
-        "services" if key.starts_with("services.weather") || key == "services.clockFormat" => a.info.wake(),
+        "services" if key.starts_with("services.weather") || key == "services.clockFormat" => a.info.refresh_weather(),
         "bar" => {
             a.wm.republish();
             a.publish_status();

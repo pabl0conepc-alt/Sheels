@@ -2,7 +2,7 @@
 (defwindow utilities []
   :geometry (geometry :anchor "bottom right")
   :stacking "overlay" :exclusive false :focusable "none" :namespace "sheels-utilities"
-  (revealer :transition "slideup" :reveal {ui.utilities} :duration "400ms"
+  (revealer :transition "slideup" :reveal {ui.utilities} :duration "300ms"
     (box :orientation "h" :space-evenly false
       (box :class "fillet bl" :valign "end")
       (box :orientation "v" :space-evenly false

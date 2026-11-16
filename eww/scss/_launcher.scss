@@ -15,6 +15,8 @@
   &.sel { background-color: $container; }
   &.sel:hover { background-color: mix($onSurface, $surfaceContainer, 6%); }
 }
+// GTK ignores min-height on the eventbox itself: size the row inside it.
+.launcher-item > box { min-height: 57px; }
 .launcher-item-icon { min-width: 36px; margin-right: $sp-md; }
 .launcher-mat {
   min-width: 36px; min-height: 36px;

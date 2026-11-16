@@ -15,7 +15,12 @@
 (defwindow border-right [monitor thickness rounding]
   :geometry (geometry :width "${thickness}px" :height "100%" :anchor "center right")
   :stacking "fg" :exclusive true :focusable "none" :namespace "sheels-border"
-  (box :class "border-strip"))
+  ; Hovering the middle of the right edge reveals the session menu (Caelestia).
+  (centerbox :class "border-strip" :orientation "v"
+    (box)
+    (eventbox :onhover "sheels hover session" :onhoverlost "sheels unhover session"
+      (box :class "session-trigger" :height 320))
+    (box)))
 
 (defwindow border-bottom [monitor thickness rounding]
   :geometry (geometry :width "100%" :height "${thickness}px" :anchor "bottom center")

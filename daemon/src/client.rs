@@ -38,6 +38,16 @@ pub fn listen(topic: &str) -> i32 {
     }
 }
 
+/// Top-level commands the daemon understands (for a clear error on typos
+/// when it is not running).
+const KNOWN: &[&str] = &[
+    "app", "audio", "bluetooth", "bt", "brightness", "cal", "close", "config", "dash-tab", "dash-tab-scroll", "dnd",
+    "exec", "gamemode", "get", "hover", "idle-inhibit", "launcher", "lock", "lockinfo", "media", "mic", "nexus",
+    "notifs", "open", "ping", "power-profile", "quit", "record", "reload", "scheme", "screenshot", "session",
+    "settings", "toggle", "unhover", "utilities-page", "volume", "wallpaper", "wifi", "window", "workspace", "ws",
+    "ws-scroll",
+];
+
 pub fn send(args: &[String]) -> i32 {
     let mut args = args.to_vec();
     // Text payloads (launcher query, wifi password…) can come through stdin so
@@ -55,7 +65,11 @@ pub fn send(args: &[String]) -> i32 {
         args.push(buf.trim_end_matches('\n').to_string());
     }
     let Some(mut s) = connect() else {
-        eprintln!("sheels: daemon not running (start it with `sheels daemon`)");
+        if !KNOWN.contains(&args.first().map(String::as_str).unwrap_or("")) {
+            eprintln!("sheels: unknown command {:?} (see `sheels --help`)", args.first().map(String::as_str).unwrap_or(""));
+        } else {
+            eprintln!("sheels: daemon not running (start it with `sheels daemon`)");
+        }
         return 1;
     };
     let _ = s.set_read_timeout(Some(Duration::from_secs(10)));

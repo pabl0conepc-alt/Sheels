@@ -17,8 +17,11 @@ use crate::app::app;
 /// Panels that grab the screen (close on outside click, mutually exclusive).
 const MODAL: &[&str] = &["launcher", "session", "sidebar", "utilities", "nexus"];
 const ALL: &[&str] = &["launcher", "dashboard", "session", "sidebar", "utilities", "popout", "osd", "nexus"];
+/// Panels kept mapped (collapsed) between uses: building the dashboard's
+/// widget tree is the expensive part of opening it, so it is built once.
+const PERSISTENT: &[&str] = &["dashboard"];
 /// Revealer transition length used in the SCSS/yuck (keep in sync).
-const ANIM_MS: u64 = 400;
+const ANIM_MS: u64 = 300;
 
 #[derive(Default, Clone)]
 struct Panel {
@@ -248,6 +251,13 @@ impl Ui {
             }
         }
         self.st.lock().unwrap().static_open = opened;
+        if !fs {
+            for k in PERSISTENT {
+                if crate::app::cfg().dashboard.enabled || *k != "dashboard" {
+                    self.premap(k).await;
+                }
+            }
+        }
         // Popup windows are positioned per active output; remap if needed.
         let notif_mapped = app().notifs.has_popups();
         if notif_mapped {
@@ -256,6 +266,18 @@ impl Ui {
     }
 
     // ---- panel show/hide ----
+
+    /// Build a persistent panel's window now, collapsed, on the active output
+    /// (startup and output changes), so opening it later is only a reveal.
+    pub async fn premap(&self, k: &'static str) {
+        if self.is_shown(k) {
+            return;
+        }
+        let screen = self.active_output();
+        app().eww.close(&[Self::window_for(k)]).await;
+        app().eww.open(Self::window_for(k), Self::window_for(k), screen.as_deref(), &[]).await;
+        self.st.lock().unwrap().panels.entry(k).or_default().mapped = true;
+    }
 
     pub async fn toggle(&self, name: &str) -> Result<String> {
         let Some(k) = key(name) else { bail!("unknown panel {name:?}") };
@@ -343,7 +365,11 @@ impl Ui {
             if p.shown && p.mapped {
                 return;
             }
-            !p.mapped
+            // Claim the mapping now: two hover events arriving together must
+            // not both open the window (the second one would linger unseen).
+            let need = !p.mapped;
+            p.mapped = true;
+            need
         };
         if k == "launcher" {
             app().launcher.reset();
@@ -371,7 +397,6 @@ impl Ui {
                 _ => {}
             }
             app().eww.open(Self::window_for(k), Self::window_for(k), screen.as_deref(), &args).await;
-            self.st.lock().unwrap().panels.entry(k).or_default().mapped = true;
             // Let GTK map the window with the revealer collapsed first.
             tokio::time::sleep(Duration::from_millis(25)).await;
         }
@@ -407,7 +432,7 @@ impl Ui {
             let unmap = {
                 let mut st = ui.st.lock().unwrap();
                 let p = st.panels.entry(k).or_default();
-                if p.generation == generation && !p.shown && p.mapped {
+                if p.generation == generation && !p.shown && p.mapped && !PERSISTENT.contains(&k) {
                     p.mapped = false;
                     true
                 } else {
@@ -472,6 +497,11 @@ impl Ui {
             "bar" => {
                 self.set_misc("barHover", Value::Bool(true));
             }
+            "session" => {
+                if !self.is_shown("session") {
+                    self.show("session", true).await;
+                }
+            }
             item if item.starts_with("popout:") => {
                 let name = item.trim_start_matches("popout:").to_string();
                 let _ = extra;
@@ -535,6 +565,12 @@ impl Ui {
                 }
                 "bar" => {
                     ui.set_misc("barHover", Value::Bool(false));
+                }
+                "session" => {
+                    let via_hover = ui.st.lock().unwrap().panels.get("session").map(|p| p.via_hover).unwrap_or(false);
+                    if via_hover {
+                        ui.hide("session").await;
+                    }
                 }
                 "osd" => {
                     ui.osd().await;

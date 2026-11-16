@@ -43,7 +43,11 @@ in
 
   config = lib.mkIf cfg.enable (lib.mkMerge [
     {
-      home.packages = [ sheels ] ++ (with pkgs; [ material-symbols rubik nerd-fonts.caskaydia-cove nerd-fonts.jetbrains-mono ]);
+      home.packages = [ sheels ] ++ (with pkgs; [
+        material-symbols rubik nerd-fonts.caskaydia-cove nerd-fonts.jetbrains-mono
+        # used by the driftwm autostart (idle/lock, clipboard history) and Super+T
+        swayidle wl-clipboard cliphist foot
+      ]);
       fonts.fontconfig.enable = true;
 
       xdg.configFile."sheels/shell.json" = lib.mkIf (cfg.settings != { }) {

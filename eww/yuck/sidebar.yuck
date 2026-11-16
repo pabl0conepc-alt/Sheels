@@ -3,7 +3,7 @@
 (defwindow sidebar [h]
   :geometry (geometry :anchor "center right" :height "${h}px")
   :stacking "overlay" :exclusive false :focusable "none" :namespace "sheels-sidebar"
-  (revealer :transition "slideleft" :reveal {ui.sidebar} :duration "400ms"
+  (revealer :transition "slideleft" :reveal {ui.sidebar} :duration "300ms"
     (box :class "panel right sidebar-panel" :orientation "v" :space-evenly false :vexpand true
       (box :class "card notif-centre" :orientation "v" :space-evenly false :vexpand true
         (box :orientation "h" :space-evenly false :class "nc-head"
