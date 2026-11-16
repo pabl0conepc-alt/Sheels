@@ -54,7 +54,17 @@ impl Eww {
         }
         // Make sure a stale instance for this config dir is gone.
         let _ = self.cmd().arg("kill").status().await;
+        // A private XDG_CONFIG_HOME shields the shell from the user's GTK CSS
+        // and settings (sheels themes GTK apps itself via templates).
+        let xdg = crate::util::runtime_dir().join("eww-xdg");
+        let _ = std::fs::create_dir_all(xdg.join("gtk-3.0"));
+        let _ = crate::util::write_if_changed(&xdg.join("gtk-3.0/gtk.css"), "/* sheels: isolate the shell from user GTK CSS */\n");
+        let _ = crate::util::write_if_changed(
+            &xdg.join("gtk-3.0/settings.ini"),
+            "[Settings]\ngtk-application-prefer-dark-theme=true\ngtk-font-name=Google Sans Flex 11\ngtk-cursor-blink=true\n",
+        );
         let mut c = self.cmd();
+        c.env("XDG_CONFIG_HOME", &xdg);
         c.arg("daemon").arg("--no-daemonize");
         if std::env::var_os("SHEELS_EWW_LOG").is_some() {
             c.stderr(Stdio::inherit()).stdout(Stdio::inherit());

@@ -25,8 +25,13 @@
   systemd,
 }:
 let
+  # EWW + two small input-widget props (`:onkeypress`, `:autofocus`) so the
+  # launcher gets Esc/arrow keys and focus like Caelestia's.
+  eww' = eww.overrideAttrs (old: {
+    patches = (old.patches or [ ]) ++ [ ./eww-sheels.patch ];
+  });
   runtimeDeps = [
-    eww
+    eww'
     pulseaudio # pactl (works with pipewire-pulse)
     brightnessctl
     networkmanager # nmcli

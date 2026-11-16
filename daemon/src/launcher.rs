@@ -214,6 +214,7 @@ impl Launcher {
             i.query.clear();
             i.selected = 0;
         }
+        app().hub.publish("lset", &json!({ "text": "", "n": 0 }));
         self.maybe_reload();
         self.update();
     }
@@ -595,12 +596,18 @@ impl Launcher {
         Ok(())
     }
 
+    /// Programmatic change of the search text (Tab completion, clear). This is
+    /// the only time the entry's text is pushed to EWW: binding the entry to
+    /// the live query would fight the user's typing.
     fn set_query(&self, q: String) {
         {
             let mut i = self.inner.lock().unwrap();
-            i.query = q;
+            i.query = q.clone();
             i.selected = 0;
         }
+        static N: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
+        let n = N.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+        app().hub.publish("lset", &json!({ "text": q, "n": n }));
         self.update();
     }
 
@@ -667,6 +674,32 @@ impl Launcher {
                 if changed || clean != arg {
                     self.update();
                 }
+            }
+            "key" => {
+                // From the patched EWW input (`:onkeypress`).
+                let max = crate::app::cfg().launcher.max_shown.max(1) as i64;
+                let step = match arg.as_str() {
+                    "Escape" => {
+                        app().ui.close("launcher").await?;
+                        return Ok(String::new());
+                    }
+                    "Up" => -1,
+                    "Down" => 1,
+                    "Page_Up" => -max,
+                    "Page_Down" => max,
+                    "Tab" | "ISO_Left_Tab" => {
+                        let marker = KEY_TAB.to_string();
+                        let q = self.inner.lock().unwrap().query.clone();
+                        return Box::pin(self.command("query", &[format!("{q}{marker}")])).await;
+                    }
+                    _ => 0,
+                };
+                {
+                    let mut i = self.inner.lock().unwrap();
+                    let count = i.count.max(1) as i64;
+                    i.selected = (i.selected as i64 + step).clamp(0, count - 1) as usize;
+                }
+                self.update();
             }
             "accept" => {
                 let sel = self.inner.lock().unwrap().selected;

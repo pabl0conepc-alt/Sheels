@@ -1,7 +1,7 @@
 ; App launcher (Caelestia modules/launcher): rises from the bottom border.
 ; Text goes to the daemon through a quoted heredoc, so nothing typed here is
-; ever interpreted by a shell. Esc/Up/Down/Tab arrive as private-use marker
-; characters inserted by a GTK binding-set (see scss/_launcher.scss).
+; ever interpreted by a shell. Esc/Up/Down/Tab come from `:onkeypress` and the
+; field grabs focus with `:autofocus` (both from nix/eww-sheels.patch).
 
 (defwindow launcher [maxh]
   :geometry (geometry :anchor "bottom center")
@@ -18,14 +18,16 @@
   (box :class "launcher-search" :orientation "h" :space-evenly false
     (icon :class "launcher-search-icon" :name {launcher.mode == "apps" ? "search" : launcher.mode == "calc" ? "calculate" : launcher.mode == "wallpapers" ? "image" : launcher.mode == "schemes" ? "palette" : launcher.mode == "variants" ? "colors" : "terminal"})
     (overlay :hexpand true
-      (input :class "launcher-input" :hexpand true :value {launcher.query}
+      (input :class "launcher-input" :hexpand true :value {lset.text}
              :onchange "sheels launcher query <<'__SHEELS_EOF__'
 {}
 __SHEELS_EOF__"
-             :onaccept "sheels launcher accept")
+             :onaccept "sheels launcher accept"
+             :onkeypress "sheels launcher key {}"
+             :autofocus true)
       (label :class "launcher-placeholder" :xalign 0 :visible {launcher.query == ""}
              :text "Type \"${launcher.prefix}\" for commands"))
-    (button :class "launcher-clear" :visible {launcher.query != ""} :onclick "sheels launcher set"
+    (eventbox :class "launcher-clear" :visible {launcher.query != ""} :onclick "sheels launcher set" :cursor "pointer"
       (icon :name "close"))))
 
 (defwidget launcher-results []
@@ -33,7 +35,7 @@ __SHEELS_EOF__"
     ; Wallpaper carousel
     (box :visible {launcher.mode == "wallpapers"} :class "launcher-walls" :orientation "h" :space-evenly false :halign "center"
       (for w in {launcher.wallpapers}
-        (button :class "wall-item ${w.sel ? 'sel' : ''} ${w.current ? 'current' : ''}"
+        (eventbox :class "wall-item ${w.sel ? 'sel' : ''} ${w.current ? 'current' : ''}" :cursor "pointer"
                 :onclick "sheels launcher activate ${w.idx}"
           (box :orientation "v" :space-evenly false
             (box :class "wall-thumb" :style "background-image: url('${w.thumb}');")
@@ -47,7 +49,7 @@ __SHEELS_EOF__"
     ; Lists
     (box :visible {launcher.mode != "wallpapers"} :orientation "v" :space-evenly false
       (for it in {launcher.items}
-        (button :class "launcher-item ${it.sel ? 'sel' : ''} ${it.kind}"
+        (eventbox :class "launcher-item ${it.sel ? 'sel' : ''} ${it.kind}" :cursor "pointer"
                 :onclick "sheels launcher activate ${it.idx}"
           (box :orientation "h" :space-evenly false
             (box :class "launcher-item-icon" :valign "center"

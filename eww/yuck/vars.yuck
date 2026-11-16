@@ -12,6 +12,8 @@
   "sheels listen sys")
 (deflisten launcher :initial '{"query":"","mode":"apps","items":[],"wallpapers":[],"count":0,"selected":0,"empty":true,"prefix":">"}'
   "sheels listen launcher")
+; Programmatic launcher text changes only (Tab completion / clear).
+(deflisten lset :initial '{"text":"","n":0}' "sheels listen lset")
 (deflisten ui :initial '{"launcher":false,"dashboard":false,"session":false,"sidebar":false,"utilities":false,"popout":false,"osd":false,"dashTab":0,"popout":"","popoutH":0,"popoutBottom":false,"fullscreen":false,"scrim":false,"wifiAskPassword":"","utilPage":""}'
   "sheels listen ui")
 (deflisten theme :initial '{"name":"","mode":"dark","variant":"","light":false,"wallpaper":"","logo":"","c":{}}'

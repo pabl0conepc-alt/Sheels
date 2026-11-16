@@ -1,0 +1,45 @@
+--- a/crates/eww/src/widgets/widget_definitions.rs	2026-11-16 10:05:45.894171053 +0000
++++ b/crates/eww/src/widgets/widget_definitions.rs	2026-11-16 10:15:06.734716722 +0000
+@@ -496,7 +496,11 @@
+     def_widget!(bargs, _g, gtk_widget, {
+         // @prop value - the content of the text field
+         prop(value: as_string) {
+-            gtk_widget.set_text(&value);
++            if gtk_widget.text() != value.as_str() {
++                gtk_widget.set_text(&value);
++                // (sheels) keep typing after programmatic changes (e.g. Tab completion)
++                gtk_widget.set_position(-1);
++            }
+         },
+         // @prop onchange - Command to run when the text changes. The placeholder `{}` will be replaced by the value
+         // @prop timeout - timeout of the command. Default: "200ms"
+@@ -515,6 +519,29 @@
+         // @prop password - if the input is obscured
+         prop(password: as_bool = false) {
+             gtk_widget.set_visibility(!password);
++        },
++        // @prop onkeypress - (sheels) command run for Escape/Up/Down/Tab/Page_Up/Page_Down. `{}` is the key name.
++        // @prop timeout - timeout of the command. Default: "200ms"
++        prop(timeout: as_duration = Duration::from_millis(200), onkeypress: as_string) {
++            connect_signal_handler!(gtk_widget, gtk_widget.connect_key_press_event(move |_, evt| {
++                let name = evt.keyval().name().map(|n| n.to_string()).unwrap_or_default();
++                match name.as_str() {
++                    "Escape" | "Up" | "Down" | "Tab" | "ISO_Left_Tab" | "Page_Up" | "Page_Down" => {
++                        run_command(timeout, &onkeypress, &[name]);
++                        glib::Propagation::Stop
++                    }
++                    _ => glib::Propagation::Proceed,
++                }
++            }));
++        },
++        // @prop autofocus - (sheels) take keyboard focus whenever the field is mapped
++        prop(autofocus: as_bool = false) {
++            if autofocus {
++                gtk_widget.connect_map(|w| w.grab_focus());
++                if gtk_widget.is_mapped() {
++                    gtk_widget.grab_focus();
++                }
++            }
+         }
+     });
+     Ok(gtk_widget)
