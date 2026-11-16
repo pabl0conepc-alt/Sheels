@@ -48,7 +48,7 @@ __SHEELS_EOF__"
         (label :class "launcher-empty-sub" :xalign 0 :text "Try searching for something else")))
     ; Lists
     (eventbox :visible {launcher.mode != "wallpapers"} :onscroll "sheels launcher key {}"
-    (box :orientation "v" :space-evenly false
+    (box :orientation "v" :space-evenly false :spacing 8
       (for it in {launcher.items}
         (eventbox :class "launcher-item ${it.sel ? 'sel' : ''} ${it.kind}" :cursor "pointer"
                 :onclick "sheels launcher activate ${it.idx}"
