@@ -28,8 +28,8 @@ Medido com toda a stack aberta (daemon + EWW + listeners) a 1920×1080. A render
 
 | Situação | CPU (1 núcleo) | Memória (PSS) |
 |---|---|---|
-| Ocioso (barra + moldura) | **~0,2 %** | **~58 MiB** |
-| Dashboard aberto (atualizando recursos a cada 1 s) | ~0,95 % | ~72 MiB |
+| Ocioso (barra + moldura) | **~0,12 %** | **~55 MiB** |
+| Dashboard aberto na aba Performance (recursos a cada 1 s) | ~0,47 % | ~67 MiB |
 
 O consumo é baixo por causa destas escolhas:
 
@@ -37,7 +37,9 @@ O consumo é baixo por causa destas escolhas:
 - **O monitor de recursos só roda com o dashboard aberto.** Fechado, ele dorme num `Notify`.
 - **A posição da música não exige ticks do daemon.** O daemon publica `(posição, timestamp)` e o EWW interpola com `EWW_TIME`.
 - **Janelas só existem quando visíveis.** Cada painel é mapeado ao abrir e destruído ao fechar.
-- **Notificações usam slots estáveis.** O EWW reconstrói todos os filhos de um `for` a cada mudança, então os popups usam 5 slots fixos. Assim só o card que entra ou sai é animado.
+- **O EWW só mexe no GTK quando um valor muda de verdade.** O EWW original chama todos os setters a cada atualização de variável, mesmo com o valor igual (e um `label.set_text` igual já força relayout da janela), e recria todos os filhos de um `for`. O patch do Sheels (`nix/eww-sheels.patch`) memoriza o último valor de cada propriedade e de cada lista. Resultado medido: **~8× menos CPU no EWW** por atualização de status (100 atualizações: de ~800 ms para ~95 ms).
+- **Notificações usam slots estáveis.** Os popups usam 5 slots fixos, então só o card que entra ou sai é animado.
+- **O Nexus não reconstrói a página ao mexer numa opção.** O daemon gera cada página uma vez; os valores ficam ligados ao tópico `cfg`.
 - **O daemon é um binário Rust de 4,4 MB.** Ele roda num runtime tokio single-thread e ocupa cerca de 3 MiB.
 - **O bongocat só anima enquanto há música tocando.** Fora isso ele fica estático, igual ao Caelestia.
 

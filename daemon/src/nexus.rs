@@ -704,7 +704,11 @@ impl Nexus {
             "appVols": st.app_vols,
             "apps": st.apps,
             "walls": st.walls,
-            "about": st.about,
+            "about": if st.about.is_null() {
+                json!({"host": "", "device": "", "distro": "", "kernel": "", "firmware": "", "shell": env!("CARGO_PKG_VERSION"), "eww": "", "driftwm": ""})
+            } else {
+                st.about.clone()
+            },
             "form": {"ssid": st.form_ssid, "hidden": st.form_hidden, "status": st.form_status},
         })
     }
