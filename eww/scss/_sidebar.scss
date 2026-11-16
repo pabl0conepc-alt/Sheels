@@ -1,1 +1,82 @@
-// sidebar
+// Sidebar + utilities — 430px (SidebarTokens/UtilitiesTokens.width).
+.sidebar-panel {
+  padding: $pad-sm $pad-sm $pad-sm $pad-lg;
+  min-width: 406px;
+  border-radius: $rounding-xl 0 0 $rounding-xl;
+}
+.utilities-panel { padding: $pad-lg $pad-sm $pad-sm $pad-lg; min-width: 406px; }
+.sidebar-gap {
+  min-height: 1px;
+  margin: $sp-lg 0;
+  background-color: $outlineVariant;
+}
+.notif-centre { padding: $pad-lg; border-radius: $rounding-lgi; }
+.nc-head { margin-bottom: $sp-sm; }
+.nc-title { font-size: fs(13); color: $onSurfaceVariant; }
+.nc-empty { margin-bottom: 60px; }
+.nc-empty-text { font-size: fs(24); font-weight: 500; color: $outline; margin-top: $sp-sm; }
+.nc-group {
+  background-color: $surfaceContainerHigh;
+  border-radius: $rounding-lgi;
+  padding: $pad-sm;
+  margin-bottom: $sp-sm;
+  .notif { background-color: transparent; padding: $pad-sm; min-width: 0; }
+}
+.nc-group-head { padding: 0 $pad-xs; }
+.nc-group-icon { min-width: 24px; margin-right: $sp-sm; .icon { font-size: 18px; color: $primary; } }
+.nc-group-app { font-size: fs(12); font-weight: 500; }
+.nc-count {
+  background-color: $secondaryContainer;
+  border-radius: $full;
+  padding: 2px 8px;
+  margin: 0 $sp-xs;
+  label { font-size: fs(10); color: $onSecondaryContainer; }
+}
+
+.util-cards > .util-card { margin-bottom: $sp-md; }
+.util-cards > .util-card:last-child { margin-bottom: 0; }
+.util-card { padding: $pad-lg; border-radius: $rounding-lgi; }
+.util-icon {
+  min-width: 52px; min-height: 52px;
+  border-radius: $full;
+  background-color: $secondaryContainer;
+  margin-right: $sp-md;
+  .icon { font-size: 26px; color: $onSecondaryContainer; }
+  &.on { background-color: $primary; .icon { color: $onPrimary; } }
+  &.rec { background-color: $error; .icon { color: $onError; } }
+}
+.util-title { font-size: fs(14); }
+.util-sub { font-size: fs(12); color: $onSurfaceVariant; }
+.split-btn { margin-left: $sp-sm; }
+.split-main {
+  background-color: $primary;
+  border-radius: $full $rounding-xs $rounding-xs $full;
+  padding: 8px 14px;
+  .icon { color: $onPrimary; font-size: 20px; margin-right: 6px; }
+  label { color: $onPrimary; font-size: fs(12); }
+}
+.split-menu {
+  background-color: $primary;
+  border-radius: $rounding-xs $full $full $rounding-xs;
+  margin-left: 2px;
+  padding: 8px 8px;
+  .icon { color: $onPrimary; font-size: 20px; }
+}
+.rec-list-head { margin-top: $sp-md; .icon { font-size: 22px; margin-right: $sp-md; } }
+.rec-empty { margin: $sp-lg 0 $sp-sm 0; color: $onSurfaceVariant;
+  .icon { color: $onSurfaceVariant; font-size: 18px; margin-right: $sp-sm; } label { color: $onSurfaceVariant; } }
+.rec-item { padding: 4px 0; }
+.rec-name { font-size: fs(12); }
+.toggles .util-title { margin-bottom: $sp-md; }
+.toggle-row { margin-bottom: $sp-sm; &:last-child { margin-bottom: 0; } }
+.toggle {
+  min-height: 44px;
+  margin: 0 4px;
+  border-radius: $full;
+  background-color: $surfaceContainerHighest;
+  transition: background-color $dur-sm $ease, border-radius $dur $ease-expr;
+  .icon { font-size: 22px; color: $onSurfaceVariant; }
+  &.on { background-color: $primary; border-radius: $rounding-md; .icon { color: $onPrimary; } }
+  &:hover { background-color: mix($onSurface, $surfaceContainerHighest, 8%); }
+  &.on:hover { background-color: mix($onPrimary, $primary, 8%); }
+}

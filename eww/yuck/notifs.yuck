@@ -1,1 +1,47 @@
-; notifs
+; Notification popups (Caelestia modules/notifications): top-right corner.
+; Five stable slots (see notifd.rs) so each card animates independently.
+(defwindow notif-popups []
+  :geometry (geometry :anchor "top right")
+  :stacking "overlay" :exclusive false :focusable "none" :namespace "sheels-notifications"
+  (box :orientation "h" :space-evenly false
+    (box :class "fillet tl" :valign "start")
+    (box :orientation "v" :space-evenly false
+      (box :class "panel top-right notif-panel" :orientation "v" :space-evenly false
+        (notif-slot :n {notifs.slots[0]})
+        (notif-slot :n {notifs.slots[1]})
+        (notif-slot :n {notifs.slots[2]})
+        (notif-slot :n {notifs.slots[3]})
+        (notif-slot :n {notifs.slots[4]}))
+      (box :class "fillet rb" :halign "end"))))
+
+(defwidget notif-slot [n]
+  (revealer :transition "slidedown" :reveal {n.show ?: false} :duration "350ms"
+    (box :class "notif-slot"
+      (notif-card :n n :popup true))))
+
+; A notification card, shared by popups and the sidebar.
+(defwidget notif-card [n ?popup]
+  (eventbox :onmiddleclick "sheels notifs dismiss ${n.id ?: 0}"
+            :onrightclick "sheels notifs hide ${n.id ?: 0}"
+    (box :class "notif ${(n.critical ?: false) ? 'critical' : ''}" :orientation "v" :space-evenly false
+      (box :orientation "h" :space-evenly false
+        (overlay :class "notif-image-wrap" :valign "start"
+          (box :class "notif-icon-bg ${(n.critical ?: false) ? 'critical' : ''}"
+            (label :class "icon fill notif-mat" :text {n.matIcon ?: "chat"}))
+          (box :visible {(n.image ?: "") == "" && (n.icon ?: "") != ""} :class "notif-appicon"
+            (image :icon {n.icon ?: ""} :icon-size "large-toolbar"))
+          (box :visible {(n.image ?: "") != ""} :class "notif-image"
+               :style "background-image: url('${n.image ?: ''}');"))
+        (box :orientation "v" :space-evenly false :hexpand true :class "notif-text"
+          (box :orientation "h" :space-evenly false
+            (label :class "notif-summary" :xalign 0 :limit-width 32 :text {n.summary ?: ""})
+            (label :class "notif-time" :xalign 0 :text "  •  ${n.time ?: ''}")
+            (box :hexpand true)
+            (button :class "notif-close" :onclick "sheels notifs dismiss ${n.id ?: 0}"
+              (label :class "icon" :text "close")))
+          (label :class "notif-body" :xalign 0 :limit-width 46
+                 :visible {(n.body ?: "") != ""} :text {n.body ?: ""})))
+      (box :class "notif-actions" :orientation "h" :space-evenly true :visible {arraylength(n.actions ?: []) > 0}
+        (for a in {n.actions ?: []}
+          (button :class "notif-action" :onclick "sheels notifs action ${n.id} ${a.i}"
+            (label :limit-width 24 :text {a.label})))))))

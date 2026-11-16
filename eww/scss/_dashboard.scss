@@ -1,1 +1,229 @@
-// dashboard
+// Dashboard — measured against a capture of Caelestia v2.5 (1920x1080).
+.dash {
+  padding: 0 $pad-lg $pad-lg $pad-lg;
+  min-width: 840px;
+}
+
+.card {
+  background-color: $container;
+  border-radius: $rounding-xl;
+}
+
+// ---- tabs
+.dash-tabs { margin-bottom: $sp-lg; }
+.dash-tab {
+  padding: 10px 0 6px 0;
+  border-radius: $rounding-md $rounding-md 0 0;
+  transition: background-color $dur-sm $ease;
+  &:hover { background-color: rgba($onSurface, 0.06); }
+  .icon { font-size: 20px; color: $onSurfaceVariant; }
+  .dash-tab-label { font-size: fs(12); color: $onSurfaceVariant; margin-top: 2px; }
+  &.active .icon, &.active .dash-tab-label { color: $primary; }
+}
+.dash-tab-track {
+  min-height: 1px;
+  background-color: $outlineVariant;
+}
+.dash-tab-indicator {
+  min-width: 88px;
+  min-height: 3px;
+  margin-top: -2px;
+  border-radius: 3px 3px 0 0;
+  background-color: $primary;
+  transition: margin-left $dur $ease-expr;
+}
+
+// ---- dashboard tab grid
+.dash-grid > .dash-col { margin-right: $sp-md; }
+.dash-row > * { margin-right: $sp-md; }
+.dash-row > *:last-child { margin-right: 0; }
+.dash-row.bottom { margin-top: $sp-md; }
+
+.weather-small {
+  min-width: 275px; min-height: 130px;
+  border-radius: 42px;
+}
+.weather-small-icon { font-size: 64px; color: $onSurface; margin-right: $sp-lgi; }
+.weather-small-temp { color: $primary; font-size: fs(28); font-weight: 600; }
+.weather-small-desc { font-size: fs(12); }
+
+.user { min-width: 340px; min-height: 130px; background-color: transparent; }
+.user-base { min-width: 340px; min-height: 130px; background-color: $container; border-radius: $rounding-xl; }
+.user-avatar {
+  min-width: 100px; min-height: 100px;
+  margin: 15px 0 0 41px;
+  border-radius: $full;
+  background-size: cover;
+  background-position: center;
+  background-color: rgba($onSurface, 0.1);
+}
+.user-avatar-icon { font-size: 48px; color: $onSurfaceVariant; }
+.user-logo {
+  margin: 14px 0 0 20px;
+  min-width: 46px; min-height: 46px;
+  border-radius: 16px;
+  background-color: $primaryContainer;
+}
+.user-logo image { margin: 0 11px; }
+.user-uptime-icon {
+  margin: 85px 0 0 110px;
+  min-width: 44px; min-height: 32px;
+  border-radius: $rounding-md;
+  background-color: $tertiaryContainer;
+  .icon { color: $onTertiaryContainer; font-size: 20px; }
+}
+.user-uptime { margin: 90px 0 0 164px; font-size: fs(12); }
+.bubble-dot {
+  border-radius: $full;
+  background-color: $secondaryContainer;
+  &.sm { min-width: 10px; min-height: 10px; margin: 62px 0 0 150px; }
+  &.md { min-width: 15px; min-height: 15px; margin: 50px 0 0 162px; }
+}
+.user-wm {
+  margin: 20px 0 0 152px;
+  padding: 7px 12px;
+  border-radius: $rounding-lgi;
+  background-color: $secondaryContainer;
+  .icon { color: $onSecondaryContainer; font-size: 16px; margin-right: 4px; }
+  label { color: $onSecondaryContainer; font-size: fs(11); }
+}
+
+.datetime { min-width: 110px; min-height: 295px; border-radius: $rounding-lg; }
+.dt-num { font-family: $font-clock; font-size: fs(28); font-weight: 600; color: $secondary; }
+.dt-dots { font-family: $font-clock; font-size: fs(20); color: $primary; margin: -6px 0; }
+
+.calendar { min-width: 381px; padding: $pad-md $pad-md $pad-sm $pad-md; }
+.cal-head { margin-bottom: $sp-sm; }
+.cal-nav {
+  min-width: 36px; min-height: 36px;
+  border-radius: $full;
+  .icon { font-size: 22px; color: $onSurfaceVariant; }
+  &:hover { background-color: rgba($onSurface, 0.08); }
+}
+.cal-title { border-radius: $full; label { color: $primary; font-size: fs(14); font-weight: 500; } }
+.cal-title:hover { background-color: rgba($onSurface, 0.06); }
+.cal-week-names label { font-size: fs(12); font-weight: 500; color: $onSurface; min-height: 28px; }
+.cal-week-names label.weekend { color: $tertiary; }
+.cal-day { min-height: 31px; }
+.cal-num {
+  font-size: fs(12);
+  color: $onSurface;
+  &.weekend { color: $tertiary; }
+  &.other { color: $outline; }
+  &.today { color: $onPrimary; font-weight: 600; }
+}
+
+.resources { min-width: 112px; padding: $pad-lg 0; border-radius: $rounding-lg; }
+.ring-base { min-width: 80px; min-height: 80px; }
+.ring-track { color: $surfaceContainerHighest; background-color: transparent; }
+.ring-fill { color: $primary; background-color: transparent; }
+.ring-icon { font-size: 28px; color: $primary; }
+.ring.mem .ring-fill, .ring.mem .ring-icon { color: $tertiary; }
+.ring.disk .ring-fill, .ring.disk .ring-icon { color: $secondary; }
+
+.media-small {
+  min-width: 198px;
+  border-radius: 56px;
+  padding: $pad-md 0 $pad-md 0;
+}
+.media-arc-base { min-width: 172px; min-height: 172px; }
+.media-arc-track { color: $surfaceContainerHighest; background-color: transparent; }
+.media-arc { color: $primary; background-color: transparent; }
+.media-cover {
+  min-width: 140px; min-height: 140px;
+  border-radius: $full;
+  background-color: $surfaceContainerHighest;
+  background-size: cover;
+  background-position: center;
+  &.big { min-width: 260px; min-height: 260px; border-radius: $rounding-xl; }
+}
+.media-cover-icon { font-size: 56px; color: $onSurfaceVariant; &.big { font-size: 96px; } }
+.media-title { color: $primary; font-size: fs(14); font-weight: 500; margin-top: $sp-md; }
+.media-album { color: $outline; font-size: fs(12); margin-top: 2px; }
+.media-artist { color: $secondary; font-size: fs(12); margin-top: 2px; }
+.media-controls { margin-top: $sp-md; }
+.media-btn {
+  min-width: 44px; min-height: 40px;
+  border-radius: $full;
+  margin: 0 2px;
+  background-color: $surfaceContainerHigh;
+  transition: background-color $dur-sm $ease, border-radius $dur-sm $ease;
+  .icon { font-size: 22px; color: $onSurfaceVariant; }
+  &:hover { background-color: $surfaceContainerHighest; }
+  &.play { min-width: 84px; }
+  &.play.playing { background-color: $primary; border-radius: $rounding-md; .icon { color: $onPrimary; } }
+}
+.bongocat { margin-top: $sp-sm; }
+
+// ---- media tab
+.dash-media { min-height: 320px; }
+.media-big-art { padding: $pad-lg; margin-right: $sp-xl; }
+.media-big-title { color: $primary; font-size: fs(22); font-weight: 500; }
+.media-big-artist { color: $secondary; font-size: fs(14); margin-top: $sp-xs; }
+.media-big-album { color: $outline; font-size: fs(12); margin-top: $sp-xs; }
+.media-progress { margin-top: $sp-lg; min-width: 380px; }
+.media-time { color: $onSurfaceVariant; font-size: fs(11); }
+.media-big-side { margin-left: $sp-xl; }
+.player-chip {
+  background-color: $surfaceContainer;
+  border-radius: $full;
+  padding: 6px 14px;
+  margin-bottom: $sp-sm;
+  label { font-size: fs(12); }
+  &.active { background-color: $secondaryContainer; label { color: $onSecondaryContainer; } }
+}
+
+// ---- performance tab
+.dash-perf { min-width: 840px; }
+.perf-hero { min-width: 414px; min-height: 150px; padding: $pad-lg; }
+.perf-ring-wrap { min-width: 110px; min-height: 110px; margin-right: $sp-lg; }
+.perf-ring-track { color: $surfaceContainerHighest; background-color: transparent; }
+.perf-ring { color: $primary; background-color: transparent; }
+.perf-hero.gpu .perf-ring, .perf-hero.gpu .perf-ring-icon { color: $tertiary; }
+.perf-ring-icon { font-size: 26px; color: $primary; }
+.perf-ring-value { font-size: fs(14); font-weight: 600; }
+.perf-title { font-size: fs(16); font-weight: 500; }
+.perf-sub { font-size: fs(11); color: $onSurfaceVariant; }
+.perf-pct { font-size: fs(14); font-weight: 600; color: $primary; }
+.perf-temp { margin-top: $sp-md; .icon { color: $error; font-size: 20px; margin-right: 6px; } }
+.perf-temp-val { margin-left: $sp-sm; font-size: fs(12); }
+.perf-card-icon { font-size: 22px; color: $primary; margin-right: $sp-sm; }
+.perf-mem { min-width: 260px; padding: $pad-lg; }
+.perf-sep { min-height: 1px; background-color: $outlineVariant; margin: $sp-md 0; }
+.perf-disk { margin-top: $sp-sm; }
+.perf-net { padding: $pad-lg; min-width: 390px; }
+.perf-graph { min-height: 120px; margin: $sp-md 0; }
+.net-down { color: $primary; background-color: transparent; }
+.net-up { color: $tertiary; background-color: transparent; }
+.net-down-icon { color: $primary; font-size: 24px; margin-right: 6px; }
+.net-up-icon { color: $tertiary; font-size: 24px; margin-right: 6px; }
+.perf-net-val { font-size: fs(14); font-weight: 600; }
+.perf-bat { min-width: 150px; padding: $pad-lg; }
+.perf-bat-icon { font-size: 56px; color: $primary; }
+.perf-bat-pct { font-size: fs(22); font-weight: 600; }
+
+.hbar progress, .hbar trough { min-height: 8px; border-radius: $full; }
+.hbar trough { background-color: $surfaceContainerHighest; }
+.hbar progress { background-color: $primary; }
+.hbar.mem progress { background-color: $tertiary; }
+.hbar.disk progress { background-color: $secondary; }
+.hbar.temp progress { background-color: $error; }
+.hbar { margin: 6px 0; }
+
+// ---- weather tab
+.dash-weather { min-width: 840px; }
+.weather-now { min-width: 300px; padding: $pad-xl; margin-right: $sp-md; border-radius: 42px; }
+.weather-city { color: $onSurfaceVariant; font-size: fs(14); }
+.weather-big-icon { font-size: 80px; color: $secondary; margin-right: $sp-md; }
+.weather-big-temp { color: $primary; font-size: fs(40); font-weight: 600; }
+.weather-desc { font-size: fs(16); margin-top: $sp-sm; }
+.weather-feels { color: $onSurfaceVariant; font-size: fs(12); margin-top: $sp-xs; }
+.weather-details > * { margin-right: $sp-sm; }
+.weather-details > *:last-child { margin-right: 0; }
+.weather-detail { padding: $pad-md; border-radius: $rounding-lgi; }
+.weather-detail-icon { font-size: 24px; color: $tertiary; }
+.weather-detail-val { font-size: fs(13); font-weight: 600; }
+.weather-hours, .weather-days { margin-top: $sp-md; padding: $pad-md; }
+.weather-fc-icon { font-size: 30px; color: $secondary; margin: 4px 0; }
+.weather-fc-temp { font-size: fs(13); font-weight: 600; }
+.weather-fc-day { font-size: fs(12); color: $primary; font-weight: 500; }

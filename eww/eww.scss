@@ -1,6 +1,7 @@
 // Sheels — Caelestia look for EWW (GTK3 CSS via SCSS).
 // Colours come from the generated `_theme.scss` (Material 3 roles, the
 // same names Caelestia uses). Tokens below mirror Caelestia's tokens.hpp.
+@import "keys";
 @import "theme";
 
 // ---------------------------------------------------------------- tokens
@@ -98,13 +99,13 @@ tooltip, tooltip * {
   min-height: $border-rounding;
 }
 // radial gradient: transparent quarter disc, surface colour outside it.
-@mixin fillet($pos) {
-  background-image: radial-gradient(circle farthest-corner at $pos, transparent 70.2%, $bg 71.6%);
+@mixin fillet($pos, $r: $rounding-xl) {
+  background-image: radial-gradient(circle $r at $pos, transparent $r - 0.75px, $bg $r + 0.25px);
 }
-.corner.tl { @include fillet(100% 100%); }
-.corner.tr { @include fillet(0% 100%); }
-.corner.bl { @include fillet(100% 0%); }
-.corner.br { @include fillet(0% 0%); }
+.corner.tl { @include fillet(100% 100%, $border-rounding); }
+.corner.tr { @include fillet(0% 100%, $border-rounding); }
+.corner.bl { @include fillet(100% 0%, $border-rounding); }
+.corner.br { @include fillet(0% 0%, $border-rounding); }
 
 // Panel junction fillets: same idea, sized to the panel rounding.
 .fillet { min-width: $rounding-xl; min-height: $rounding-xl; }

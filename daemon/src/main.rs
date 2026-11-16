@@ -20,6 +20,7 @@ mod launcher;
 mod media;
 mod network;
 mod notifd;
+mod recorder;
 mod server;
 mod dbus;
 mod sysmon;

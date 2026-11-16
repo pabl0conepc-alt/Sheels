@@ -1,6 +1,6 @@
 // Bar — metrics are mirrored in daemon/src/ui.rs (popout_geometry) and
 // daemon/src/wm.rs (workspace indicator); keep them in sync.
-.bar {
+.bar-root {
   background-color: $bg;
   min-width: 40px + 2 * $border-thickness;
 }

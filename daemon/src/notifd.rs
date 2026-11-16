@@ -169,7 +169,8 @@ impl Notifd {
         json!({
             "id": n.id, "app": n.app, "summary": n.summary, "body": n.body,
             "icon": n.icon, "image": n.image, "matIcon": n.mat_icon,
-            "actions": n.actions.iter().map(|(k, l)| json!({"key": k, "label": l})).collect::<Vec<_>>(),
+            "actions": n.actions.iter().enumerate().filter(|(_, (k, _))| k != "default").map(|(i, (_, l))| json!({"i": i, "label": l})).collect::<Vec<_>>(),
+            "hasDefault": n.actions.iter().any(|(k, _)| k == "default"),
             "urgency": n.urgency, "critical": n.urgency == 2, "time": rel_time(n.time),
             "clock": format_clock(n.time),
         })
@@ -204,15 +205,17 @@ impl Notifd {
         }
         let groups: Vec<Value> = order
             .iter()
-            .map(|app| {
+            .take(6)
+            .enumerate()
+            .map(|(gi, app)| {
                 let ns = &groups[app];
                 let expanded = *i.expanded.get(app).unwrap_or(&false);
-                let shown: Vec<Value> = ns.iter().take(if expanded { 20 } else { 3 }).map(|n| Self::notif_json(n)).collect();
+                let shown: Vec<Value> = ns.iter().take(if expanded { 6 } else { 2 }).map(|n| Self::notif_json(n)).collect();
                 json!({
                     "app": if app.is_empty() { "Unknown" } else { app },
                     "key": app,
                     "icon": ns[0].icon, "image": ns[0].image, "matIcon": ns[0].mat_icon,
-                    "count": ns.len(), "expanded": expanded, "time": rel_time(ns[0].time),
+                    "count": ns.len(), "expanded": expanded, "idx": gi, "time": rel_time(ns[0].time),
                     "critical": ns.iter().any(|n| n.urgency == 2),
                     "notifs": shown,
                 })
@@ -393,6 +396,24 @@ impl Notifd {
                     Box::pin(self.dismiss(id, 2)).await;
                 }
             }
+            "expand-idx" | "clear-app-idx" => {
+                // Group addressed by index (app names are app-provided text).
+                let k: usize = rest.first().and_then(|s| s.parse().ok()).unwrap_or(usize::MAX);
+                let app_name = {
+                    let i = self.inner.lock().unwrap();
+                    let mut order: Vec<String> = vec![];
+                    for n in &i.list {
+                        if !order.contains(&n.app) {
+                            order.push(n.app.clone());
+                        }
+                    }
+                    order.get(k).cloned()
+                };
+                if let Some(a) = app_name {
+                    let sub2 = if sub == "expand-idx" { "expand" } else { "clear-app" };
+                    return Box::pin(self.command(sub2, &[a])).await;
+                }
+            }
             "clear-app" => {
                 let app_name = rest.first().cloned().unwrap_or_default();
                 let ids: Vec<u32> = self.inner.lock().unwrap().list.iter().filter(|n| n.app == app_name).map(|n| n.id).collect();
@@ -419,7 +440,13 @@ impl Notifd {
             "dismiss" => self.dismiss(id, 2).await,
             "hide" => self.hide_popup(id).await,
             "action" => {
-                let key = rest.get(1).cloned().unwrap_or_else(|| "default".into());
+                // Actions are addressed by index (never by app-provided text).
+                let arg = rest.get(1).cloned().unwrap_or_else(|| "default".into());
+                let key = match arg.parse::<usize>() {
+                    Ok(i) => self.inner.lock().unwrap().list.iter().find(|n| n.id == id)
+                        .and_then(|n| n.actions.get(i).map(|a| a.0.clone())).unwrap_or_else(|| "default".into()),
+                    Err(_) => "default".into(),
+                };
                 emit_action(id, &key).await;
                 let resident = self.inner.lock().unwrap().list.iter().any(|n| n.id == id && n.resident);
                 if !resident {

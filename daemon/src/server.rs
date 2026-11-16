@@ -56,6 +56,13 @@ async fn handle(s: UnixStream) {
         };
         loop {
             let v = rx.borrow_and_update().clone();
+            // Never push the placeholder: EWW keeps its :initial until real data.
+            if &*v == "{}" {
+                if rx.changed().await.is_err() {
+                    return;
+                }
+                continue;
+            }
             let mut buf = Vec::with_capacity(v.len() + 1);
             buf.extend_from_slice(v.as_bytes());
             buf.push(b'\n');
@@ -112,6 +119,13 @@ pub async fn dispatch(a: Vec<String>) -> Result<String> {
         }
         "dash-tab" => {
             app.ui.set_dash_tab(sub.parse().unwrap_or(0));
+            Ok(String::new())
+        }
+        "dash-tab-scroll" => {
+            let cur = app.hub.get("ui").and_then(|u| serde_json::from_str::<serde_json::Value>(&u).ok())
+                .and_then(|u| u["dashTab"].as_i64()).unwrap_or(0);
+            let next = if sub == "down" { cur + 1 } else { cur - 1 };
+            app.ui.set_dash_tab(next.clamp(0, 3) as u8);
             Ok(String::new())
         }
         "utilities-page" => {
@@ -197,6 +211,11 @@ pub async fn dispatch(a: Vec<String>) -> Result<String> {
         "screenshot" => {
             app.ui.close_all().await;
             crate::theme::screenshot(sub).await
+        }
+        "record" => app.rec.command(sub, arg(&a, 2)).await,
+        "cal" => {
+            app.info.cal_cmd(sub);
+            Ok(String::new())
         }
         "ws" | "workspace" => app.wm.goto(sub).await,
         "ws-scroll" => app.wm.scroll(sub).await,

@@ -286,6 +286,7 @@ impl Wm {
             "workspaces": wss,
             "activeIdx": active_idx,
             "indTop": ind_top,
+            "listH": wss.iter().map(|w| slot_h(w)).sum::<i64>() + 4 * (wss.len() as i64 - 1).max(0),
             "indH": ind_h,
             "activeName": active.unwrap_or_default(),
             "shape": SHAPES[i.shape % SHAPES.len()],

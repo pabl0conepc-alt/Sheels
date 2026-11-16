@@ -1,0 +1,14 @@
+/* GTK key bindings for the launcher entry (plain CSS: the SCSS compiler
+   does not understand @binding-set). Keys insert private-use characters that
+   the sheels daemon turns into navigation (U+E000 Esc, E001 up, E002 down, E003 tab). */
+@binding-set SheelsLauncherKeys {
+  bind "Escape" { "insert-at-cursor" ("") };
+  bind "Up" { "insert-at-cursor" ("") };
+  bind "Down" { "insert-at-cursor" ("") };
+  bind "<Control>k" { "insert-at-cursor" ("") };
+  bind "<Control>j" { "insert-at-cursor" ("") };
+  bind "Tab" { "insert-at-cursor" ("") };
+  bind "Page_Up" { "insert-at-cursor" ("") };
+  bind "Page_Down" { "insert-at-cursor" ("") };
+}
+.launcher-input { -gtk-key-bindings: SheelsLauncherKeys; }

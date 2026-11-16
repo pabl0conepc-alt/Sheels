@@ -1,1 +1,48 @@
-// notifs
+// Notifications — 430px wide (NotifsTokens.width), 42px image.
+.notif-panel { padding: $pad-sm $pad-md 0 $pad-md; min-width: 406px; }
+.notif-slot { padding-bottom: $pad-sm; }
+.notif {
+  background-color: $container;
+  border-radius: $rounding-lgi;
+  padding: $pad-md;
+  min-width: 382px;
+  &.critical { background-color: $secondaryContainer; }
+}
+.notif-image-wrap { min-width: 42px; min-height: 42px; margin-right: $sp-md; }
+.notif-icon-bg {
+  min-width: 42px; min-height: 42px;
+  border-radius: $full;
+  background-color: $secondaryContainer;
+  &.critical { background-color: $error; .notif-mat { color: $onError; } }
+}
+.notif-mat { color: $onSecondaryContainer; font-size: 22px; }
+.notif-appicon {
+  min-width: 42px; min-height: 42px;
+  border-radius: $full;
+  background-color: $surfaceContainerHighest;
+}
+.notif-image {
+  min-width: 42px; min-height: 42px;
+  border-radius: $full;
+  background-size: cover;
+  background-position: center;
+}
+.notif-summary { font-size: fs(12); font-weight: 500; }
+.notif-time { font-size: fs(11); color: $outline; }
+.notif-body { font-size: fs(11); color: $onSurfaceVariant; margin-top: 2px; }
+.notif-close {
+  min-width: 24px; min-height: 24px;
+  border-radius: $full;
+  .icon { font-size: 18px; color: $onSurfaceVariant; }
+  &:hover { background-color: rgba($onSurface, 0.08); }
+}
+.notif-actions { margin-top: $sp-sm; }
+.notif-action {
+  background-color: $surfaceContainerHigh;
+  border-radius: $full;
+  padding: 7px 12px;
+  margin-right: $sp-xs;
+  &:last-child { margin-right: 0; }
+  label { font-size: fs(11); }
+  &:hover { background-color: $surfaceContainerHighest; }
+}

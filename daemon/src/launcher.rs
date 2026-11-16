@@ -467,6 +467,12 @@ impl Launcher {
         }
         let sel = i.selected;
         for (k, it) in items.iter_mut().enumerate() {
+            if it.get("current").is_none() {
+                it["current"] = Value::Bool(false);
+            }
+            if it.get("colours").is_none() {
+                it["colours"] = json!([]);
+            }
             it["sel"] = Value::Bool(k == sel);
             it["idx"] = Value::from(k);
         }

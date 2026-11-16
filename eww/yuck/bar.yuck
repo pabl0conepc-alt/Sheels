@@ -7,10 +7,10 @@
   (bar))
 
 (defwidget bar []
-  (centerbox :class "bar" :orientation "v"
+  (centerbox :class "bar-root" :orientation "v"
     ; ---- top: logo + workspaces (scroll = volume, workspaces scroll = switch)
     (box :orientation "v" :space-evenly false :valign "fill" :vexpand true
-      (eventbox :onscroll "sheels volume {}" :class "bar-pad-top")
+      (eventbox :onscroll "sheels volume {}" (box :class "bar-pad-top"))
       (eventbox :onscroll "sheels volume {}"
         (button :class "bar-logo" :onclick "sheels toggle launcher" :tooltip "Launcher"
           (image :path {theme.logo} :image-width 26 :image-height 19)))
@@ -36,8 +36,8 @@
   (box :class "ws-pill" :orientation "v" :space-evenly false :halign "center"
     (overlay
       ; Sliding active indicator (primary pill) behind the shapes.
-      (box :valign "start" :halign "fill"
-        (box :class "ws-indicator ${wm.activeIdx < 0 ? 'hidden' : ''}"
+      (box :valign "start" :halign "fill" :style "min-height: ${wm.listH ?: 32}px;"
+        (box :class "ws-indicator ${wm.activeIdx < 0 ? 'hidden' : ''}" :valign "start"
              :style "margin-top: ${wm.indTop ?: 0}px; min-height: ${wm.indH ?: 32}px;"))
       (box :orientation "v" :space-evenly false :class "ws-list"
         (for ws in {wm.workspaces}

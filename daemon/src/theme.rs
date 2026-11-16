@@ -48,7 +48,7 @@ pub struct SchemeState {
 impl Default for SchemeState {
     fn default() -> Self {
         SchemeState {
-            name: "caelestia".into(),
+            name: "dynamic".into(),
             flavour: "default".into(),
             mode: "dark".into(),
             variant: "tonalspot".into(),
@@ -439,6 +439,17 @@ impl Theme {
         let loaded: SchemeState =
             std::fs::read_to_string(Self::state_file()).ok().and_then(|s| serde_json::from_str(&s).ok()).unwrap_or_default();
         *self.st.lock().unwrap() = loaded;
+        {
+            // First run: Caelestia's bundled wallpaper + dynamic scheme.
+            let mut st = self.st.lock().unwrap();
+            if st.wallpaper.is_empty() || !Path::new(&st.wallpaper).exists() {
+                let def = share_dir().join("eww/assets/wallpaper.jpg");
+                if def.exists() {
+                    st.wallpaper = def.to_string_lossy().into_owned();
+                    st.colours.clear();
+                }
+            }
+        }
         if self.st.lock().unwrap().colours.is_empty() {
             self.recompute(false).await;
         }
@@ -511,6 +522,9 @@ impl Theme {
         let eww_dir = app().eww.dir.clone();
         let _ = std::fs::create_dir_all(&eww_dir);
         let _ = write_if_changed(&eww_dir.join("_theme.scss"), &scss);
+        // GTK key bindings must bypass the SCSS compiler: plain CSS import.
+        let keys = format!("@import url(\"file://{}\");\n", share_dir().join("eww/keys.css").display());
+        let _ = write_if_changed(&eww_dir.join("_keys.scss"), &keys);
 
         // 2. Logo (two-tone) for the bar/dashboard/lock.
         let logo = include_str!("../../eww/assets/logo.svg.in").replace("{{top}}", &c("primary")).replace("{{bottom}}", &c("onSurface"));

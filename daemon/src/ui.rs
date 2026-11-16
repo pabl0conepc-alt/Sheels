@@ -62,6 +62,10 @@ impl Ui {
             "popoutH": st.popout_geom.0,
             "popoutBottom": st.popout_geom.1,
             "fullscreen": st.fullscreen,
+            "scrim": false,
+            "wifiAskPassword": "",
+            "utilPage": "",
+            "gamemode": false,
             "modal": MODAL.iter().any(|p| st.panels.get(p).map(|x| x.shown).unwrap_or(false)),
         });
         for p in ALL {
@@ -92,7 +96,7 @@ impl Ui {
 
     pub fn active_output(&self) -> Option<String> {
         let st = self.st.lock().unwrap();
-        st.outputs.iter().find(|o| o.3).or(st.outputs.first()).map(|o| o.0.clone())
+        Some(st.outputs.iter().find(|o| o.3).or(st.outputs.first()).map(|o| o.0.clone()).unwrap_or_else(|| "0".into()))
     }
 
     fn active_height(&self) -> i32 {
@@ -185,8 +189,8 @@ impl Ui {
         if !fs {
             let outs = if outs.is_empty() { vec![(String::new(), 0, 0, true)] } else { outs };
             for (i, o) in outs.iter().enumerate() {
-                let screen = if o.0.is_empty() { None } else { Some(o.0.as_str()) };
-                for w in ["border-top", "border-right", "border-bottom", "bar", "corner-tl", "corner-tr", "corner-bl", "corner-br"]
+                let screen = if o.0.is_empty() { Some("0") } else { Some(o.0.as_str()) };
+                for w in ["bar", "border-top", "border-right", "border-bottom", "corner-tl", "corner-tr", "corner-bl", "corner-br"]
                 {
                     let id = format!("{w}-{i}");
                     let c = crate::app::cfg();
@@ -375,6 +379,10 @@ impl Ui {
             "popout" => {
                 // keep current popout open (pointer moved onto it)
             }
+            "osd" => {
+                // Pointer on the OSD: keep it until the pointer leaves.
+                self.st.lock().unwrap().osd_gen += 1;
+            }
             item if item.starts_with("popout:") => {
                 let name = item.trim_start_matches("popout:").to_string();
                 let _ = extra;
@@ -424,6 +432,9 @@ impl Ui {
                 "popout" => {
                     app().net.set_list_demand(false);
                     ui.hide("popout").await;
+                }
+                "osd" => {
+                    ui.osd().await;
                 }
                 _ => {}
             }

@@ -1,1 +1,73 @@
-; utilities
+; Utilities (Caelestia modules/utilities): bottom-right cards.
+(defwindow utilities []
+  :geometry (geometry :anchor "bottom right")
+  :stacking "overlay" :exclusive false :focusable "none" :namespace "sheels-utilities"
+  (revealer :transition "slideup" :reveal {ui.utilities} :duration "400ms"
+    (box :orientation "h" :space-evenly false
+      (box :class "fillet bl" :valign "end")
+      (box :orientation "v" :space-evenly false
+        (box :class "fillet rt" :halign "end")
+        (box :class "panel bottom-right utilities-panel" :orientation "v" :space-evenly false
+          (utility-cards))))))
+
+(defwidget utility-cards []
+  (box :orientation "v" :space-evenly false :class "util-cards"
+    ; Keep awake
+    (box :class "card util-card" :orientation "h" :space-evenly false
+      (box :class "util-icon ${status.idleInhibit ? 'on' : ''}" (label :class "icon" :text "coffee"))
+      (box :orientation "v" :space-evenly false :valign "center" :hexpand true :class "util-text"
+        (label :class "util-title" :xalign 0 :text "Keep awake")
+        (label :class "util-sub" :xalign 0 :text {status.idleInhibit ? "Preventing sleep mode" : "Normal power management"}))
+      (switch :on {status.idleInhibit} :cmd "sheels idle-inhibit"))
+    ; Screen recorder
+    (box :class "card util-card rec" :orientation "v" :space-evenly false
+      (box :orientation "h" :space-evenly false
+        (box :class "util-icon ${status.rec.running ? 'on rec' : ''}" (label :class "icon" :text "screen_record"))
+        (box :orientation "v" :space-evenly false :valign "center" :hexpand true :class "util-text"
+          (label :class "util-title" :xalign 0 :limit-width 12 :text "Screen recorder")
+          (label :class "util-sub" :xalign 0
+                 :text {status.rec.running ? (status.rec.paused ? "Paused" : "Running...") : "Ready"}))
+        (box :visible {!status.rec.running} :orientation "h" :space-evenly false :class "split-btn"
+          (button :class "split-main" :onclick "sheels record fullscreen"
+            (box :orientation "h" :space-evenly false (label :class "icon" :text "fullscreen") (label :text "Fullscreen")))
+          (button :class "split-menu ${ui.recMenu ?: false ? 'open' : ''}" :onclick "sheels record region"
+                  :tooltip "Record region" (label :class "icon" :text "keyboard_arrow_down")))
+        (box :visible {status.rec.running} :orientation "h" :space-evenly false
+          (icon-btn :class "tonal" :icon {status.rec.paused ? "play_arrow" : "pause"} :onclick "sheels record pause")
+          (icon-btn :class "filled error" :icon "stop" :onclick "sheels record stop")))
+      (box :orientation "h" :space-evenly false :class "rec-list-head"
+        (label :class "icon" :text "list")
+        (label :class "util-title" :xalign 0 :hexpand true :text "Recordings")
+        (button :class "icon-btn" :onclick "sheels record folder" (label :class "icon" :text "folder_open")))
+      (box :orientation "v" :space-evenly false :class "rec-list"
+        (box :visible {arraylength(status.recordings ?: []) == 0} :orientation "h" :space-evenly false :halign "center" :class "rec-empty"
+          (label :class "icon" :text "scan_delete")
+          (label :text "No recordings found"))
+        (for r in {status.recordings ?: []}
+          (box :orientation "h" :space-evenly false :class "rec-item"
+            (label :class "rec-name" :xalign 0 :hexpand true :limit-width 30 :text {r.name})
+            (button :class "icon-btn" :onclick "sheels record play ${r.i}" (label :class "icon" :text "play_arrow"))
+            (button :class "icon-btn" :onclick "sheels record delete ${r.i}" (label :class "icon" :text "delete_forever"))))))
+    ; Quick toggles
+    (box :class "card util-card toggles" :orientation "v" :space-evenly false
+      (label :class "util-title" :xalign 0 :text "Quick toggles")
+      (box :orientation "h" :space-evenly true :class "toggle-row"
+        (toggle :icon "wifi" :on {status.net.wifiEnabled} :cmd "sheels wifi toggle")
+        (toggle :icon "bluetooth" :on {status.bt.powered} :cmd "sheels bluetooth toggle")
+        (toggle :icon "mic" :on {!status.audio.micMuted} :cmd "sheels mic mute")
+        (toggle :icon "settings" :on false :cmd "sheels app audio"))
+      (box :orientation "h" :space-evenly true :class "toggle-row"
+        (toggle :icon "gamepad" :on {status.gamemode} :cmd "sheels gamemode")
+        (toggle :icon "smart_display" :on {media.playing} :cmd "sheels media play-pause")
+        (toggle :icon "notifications_off" :on {status.dnd} :cmd "sheels dnd")))))
+
+(defwidget toggle [icon on cmd]
+  (button :class "toggle ${on ? 'on' : ''}" :onclick cmd
+    (label :class "icon" :text icon)))
+
+; Material switch.
+(defwidget switch [on cmd]
+  (button :class "m3switch ${on ? 'on' : ''}" :onclick cmd :valign "center"
+    (box :class "m3switch-track"
+      (box :class "m3switch-thumb" :halign {on ? "end" : "start"} :valign "center"
+        (label :class "icon" :text {on ? "check" : "close"})))))

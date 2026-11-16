@@ -188,7 +188,7 @@ impl Network {
             let freq = v["Frequency"].as_u64().unwrap_or(0);
             let e = json!({
                 "ssid": ssid, "strength": strength, "secure": secure, "active": active,
-                "icon": wifi_icon(strength, secure), "band": if freq > 4900 { "5 GHz" } else { "2.4 GHz" },
+                "icon": wifi_icon(strength, secure), "band": if freq > 4900 { "5 GHz" } else { "2.4 GHz" }, "i": 0,
             });
             let keep = best.get(&ssid).map(|o| active || o["strength"].as_i64().unwrap_or(0) < strength).unwrap_or(true);
             if keep {
@@ -200,6 +200,9 @@ impl Network {
             b["active"].as_bool().cmp(&a["active"].as_bool()).then(b["strength"].as_i64().cmp(&a["strength"].as_i64()))
         });
         list.truncate(12);
+        for (i, n) in list.iter_mut().enumerate() {
+            n["i"] = json!(i);
+        }
         self.inner.lock().unwrap().networks = list;
     }
 
@@ -238,6 +241,21 @@ impl Network {
             }
             "scan" => {
                 tokio::spawn(async { app().net.scan().await });
+            }
+            "connect-idx" => {
+                // UI path: SSIDs are attacker-controlled, so EWW passes an index.
+                let ssid = {
+                    let i = self.inner.lock().unwrap();
+                    arg(0).parse::<usize>().ok().and_then(|k| i.networks.get(k)).and_then(|n| n["ssid"].as_str().map(str::to_string))
+                };
+                let Some(ssid) = ssid else { bail!("no such network") };
+                let secure_unknown = !crate::util::run_ok(&["nmcli", "-t", "-f", "NAME", "connection", "show", "id", &ssid], 3000).await;
+                let secure = self.inner.lock().unwrap().networks.iter().any(|n| n["ssid"] == ssid.as_str() && n["secure"] == true);
+                if secure && secure_unknown {
+                    app().ui.set_misc("wifiAskPassword", Value::from(ssid));
+                    return Ok(String::new());
+                }
+                return Box::pin(self.command("connect", &[ssid])).await;
             }
             "connect" => {
                 let ssid = arg(0);

@@ -19,6 +19,7 @@
 ; Circular progress with a centred icon (dashboard resources).
 (defwidget ring [value icon ?class ?size]
   (overlay :class "ring ${class ?: ''}"
+    (box :class "ring-base")
     (circular-progress :class "ring-track" :value 100 :thickness 6 :start-at 75)
     (circular-progress :class "ring-fill" :value value :thickness 6 :start-at 75 :clockwise true)
     (icon :class "ring-icon" :name icon :fill true)))

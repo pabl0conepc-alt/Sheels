@@ -10,6 +10,7 @@ use crate::app::app;
 
 #[derive(Default)]
 struct Inner {
+    cal_offset: i32,
     weather: Value,
     weather_at: Option<Instant>,
     loc: Option<(f64, f64, String)>,
@@ -96,10 +97,67 @@ impl Info {
         self.wake.notify_one();
     }
 
+    /// Month grid (Monday first, 6 weeks) like Caelestia's dashboard calendar.
+    fn calendar(&self) -> Value {
+        let off = self.inner.lock().unwrap().cal_offset;
+        let now = unsafe { libc::time(std::ptr::null_mut()) };
+        let mut tm: libc::tm = unsafe { std::mem::zeroed() };
+        unsafe { libc::localtime_r(&now, &mut tm) };
+        let (ty, tmon, tday) = (tm.tm_year, tm.tm_mon, tm.tm_mday);
+        // First day of the displayed month.
+        let mut first: libc::tm = unsafe { std::mem::zeroed() };
+        first.tm_year = ty;
+        first.tm_mon = tmon + off;
+        first.tm_mday = 1;
+        first.tm_hour = 12;
+        unsafe { libc::mktime(&mut first) };
+        let (y, m) = (first.tm_year, first.tm_mon);
+        let lead = (first.tm_wday + 6) % 7; // Monday = 0
+        const MONTHS: [&str; 12] =
+            ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+        let mut weeks = vec![];
+        for w in 0..6 {
+            let mut days = vec![];
+            for d in 0..7 {
+                let mut t: libc::tm = unsafe { std::mem::zeroed() };
+                t.tm_year = y;
+                t.tm_mon = m;
+                t.tm_mday = 1 + w * 7 + d - lead;
+                t.tm_hour = 12;
+                unsafe { libc::mktime(&mut t) };
+                days.push(json!({
+                    "d": t.tm_mday,
+                    "cur": t.tm_mon == m,
+                    "today": t.tm_year == ty && t.tm_mon == tmon && t.tm_mday == tday,
+                    "weekend": d >= 5,
+                }));
+            }
+            weeks.push(Value::Array(days));
+        }
+        json!({ "title": format!("{} {}", MONTHS[m.clamp(0, 11) as usize], y + 1900), "weeks": weeks, "offset": off })
+    }
+
+    pub fn cal_cmd(&self, sub: &str) {
+        {
+            let mut i = self.inner.lock().unwrap();
+            match sub {
+                "next" => i.cal_offset += 1,
+                "prev" => i.cal_offset -= 1,
+                _ => i.cal_offset = 0,
+            }
+        }
+        self.publish();
+    }
+
     fn publish(&self) {
         let (distro, id, logo) = os_release();
         let face = crate::util::expand(&crate::app::cfg().paths.face);
-        let w = self.inner.lock().unwrap().weather.clone();
+        let mut w = self.inner.lock().unwrap().weather.clone();
+        if !w.is_object() {
+            w = json!({"available": false, "temp": "--°C", "icon": "cloud_alert", "desc": "No weather", "city": "",
+                       "feels": "--", "humidity": "--", "wind": "--", "precip": "--", "sunrise": "--", "sunset": "--",
+                       "days": [], "hours": []});
+        }
         let v = json!({
             "user": username(),
             "host": hostname(),
@@ -111,6 +169,7 @@ impl Info {
             "kernel": crate::util::read_trim("/proc/sys/kernel/osrelease").unwrap_or_default(),
             "wm": "driftwm",
             "weather": w,
+            "cal": self.calendar(),
         });
         app().hub.publish("info", &v);
     }

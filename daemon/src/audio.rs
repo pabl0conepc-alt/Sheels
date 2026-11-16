@@ -85,7 +85,7 @@ impl Audio {
         let sink = i.sinks.iter().find(|d| d.name == i.default_sink).cloned().unwrap_or_default();
         let src = i.sources.iter().find(|d| d.name == i.default_source).cloned().unwrap_or_default();
         let list = |v: &Vec<Dev>, def: &str| -> Value {
-            v.iter().map(|d| json!({"name": d.name, "desc": d.desc, "active": d.name == def})).collect()
+            v.iter().enumerate().map(|(i, d)| json!({"i": i, "name": d.name, "desc": d.desc, "active": d.name == def})).collect()
         };
         json!({
             "available": i.available,
@@ -172,6 +172,13 @@ impl Audio {
 
     pub async fn set_default(&self, source: bool, name: &str) -> Result<String> {
         let cmd = if source { "set-default-source" } else { "set-default-sink" };
+        // Accept an index (from the UI) or a device name.
+        let resolved = name.parse::<usize>().ok().and_then(|k| {
+            let i = self.inner.lock().unwrap();
+            let list = if source { &i.sources } else { &i.sinks };
+            list.get(k).map(|d| d.name.clone())
+        });
+        let name = resolved.as_deref().unwrap_or(name);
         if !crate::util::run_ok(&["pactl", cmd, name], 2000).await {
             bail!("cannot set default device");
         }

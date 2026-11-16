@@ -32,6 +32,7 @@ pub struct App {
     pub theme: crate::theme::Theme,
     pub wm: crate::wm::Wm,
     pub info: crate::info::Info,
+    pub rec: crate::recorder::Recorder,
     pub misc: Mutex<Misc>,
     pub session_bus: OnceLock<zbus::Connection>,
     pub system_bus: OnceLock<zbus::Connection>,
@@ -63,6 +64,8 @@ impl App {
             "dnd": misc.dnd,
             "idleInhibit": misc.idle_inhibit,
             "gamemode": misc.gamemode,
+            "rec": self.rec.json(),
+            "recordings": self.rec.list(),
         });
         drop(misc);
         self.hub.publish("status", &v);
@@ -116,6 +119,7 @@ async fn async_main() -> anyhow::Result<()> {
         theme: Default::default(),
         wm: Default::default(),
         info: Default::default(),
+        rec: Default::default(),
         misc: Mutex::new(Misc { dnd: false, idle_inhibit: false, gamemode: false, idle_inhibitor: None }),
         session_bus: OnceLock::new(),
         system_bus: OnceLock::new(),

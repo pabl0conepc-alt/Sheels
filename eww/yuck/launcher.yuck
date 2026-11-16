@@ -1,1 +1,63 @@
-; launcher
+; App launcher (Caelestia modules/launcher): rises from the bottom border.
+; Text goes to the daemon through a quoted heredoc, so nothing typed here is
+; ever interpreted by a shell. Esc/Up/Down/Tab arrive as private-use marker
+; characters inserted by a GTK binding-set (see scss/_launcher.scss).
+
+(defwindow launcher [maxh]
+  :geometry (geometry :anchor "bottom center")
+  :stacking "overlay" :exclusive false :focusable "exclusive" :namespace "sheels-launcher"
+  (revealer :transition "slideup" :reveal {ui.launcher} :duration "400ms"
+    (box :orientation "h" :space-evenly false
+      (box :class "fillet bl" :valign "end")
+      (box :class "panel bottom launcher-panel" :orientation "v" :space-evenly false
+        (launcher-results)
+        (launcher-search))
+      (box :class "fillet br" :valign "end"))))
+
+(defwidget launcher-search []
+  (box :class "launcher-search" :orientation "h" :space-evenly false
+    (icon :class "launcher-search-icon" :name {launcher.mode == "apps" ? "search" : launcher.mode == "calc" ? "calculate" : launcher.mode == "wallpapers" ? "image" : launcher.mode == "schemes" ? "palette" : launcher.mode == "variants" ? "colors" : "terminal"})
+    (overlay :hexpand true
+      (input :class "launcher-input" :hexpand true :value {launcher.query}
+             :onchange "sheels launcher query <<'__SHEELS_EOF__'
+{}
+__SHEELS_EOF__"
+             :onaccept "sheels launcher accept")
+      (label :class "launcher-placeholder" :xalign 0 :visible {launcher.query == ""}
+             :text "Type \"${launcher.prefix}\" for commands"))
+    (button :class "launcher-clear" :visible {launcher.query != ""} :onclick "sheels launcher set"
+      (icon :name "close"))))
+
+(defwidget launcher-results []
+  (box :orientation "v" :space-evenly false :class "launcher-results"
+    ; Wallpaper carousel
+    (box :visible {launcher.mode == "wallpapers"} :class "launcher-walls" :orientation "h" :space-evenly false :halign "center"
+      (for w in {launcher.wallpapers}
+        (button :class "wall-item ${w.sel ? 'sel' : ''} ${w.current ? 'current' : ''}"
+                :onclick "sheels launcher activate ${w.idx}"
+          (box :orientation "v" :space-evenly false
+            (box :class "wall-thumb" :style "background-image: url('${w.thumb}');")
+            (label :class "wall-name" :limit-width 16 :text {w.name})))))
+    ; Empty state
+    (box :visible {launcher.empty && launcher.mode != "wallpapers"} :class "launcher-empty" :orientation "h" :space-evenly false :halign "center"
+      (icon :class "launcher-empty-icon" :name {launcher.mode == "wallpapers" ? "hide_image" : "manage_search"})
+      (box :orientation "v" :space-evenly false :valign "center"
+        (label :class "launcher-empty-title" :xalign 0 :text "No results")
+        (label :class "launcher-empty-sub" :xalign 0 :text "Try searching for something else")))
+    ; Lists
+    (box :visible {launcher.mode != "wallpapers"} :orientation "v" :space-evenly false
+      (for it in {launcher.items}
+        (button :class "launcher-item ${it.sel ? 'sel' : ''} ${it.kind}"
+                :onclick "sheels launcher activate ${it.idx}"
+          (box :orientation "h" :space-evenly false
+            (box :class "launcher-item-icon" :valign "center"
+              (image :visible {it.kind == "app"} :icon {it.icon ?: "application-x-executable"} :icon-size "dnd")
+              (box :visible {it.kind != "app" && it.kind != "scheme"} :class "launcher-mat"
+                (icon :name {it.matIcon ?: "apps"} :fill {it.current ?: false}))
+              (box :visible {it.kind == "scheme"} :class "scheme-swatch" :orientation "h" :space-evenly true
+                (for c in {it.colours ?: []}
+                  (box :class "swatch" :style "background-color: ${c};"))))
+            (box :orientation "v" :space-evenly false :valign "center" :hexpand true :class "launcher-item-text"
+              (label :class "launcher-item-name" :xalign 0 :limit-width 60 :text {it.name})
+              (label :class "launcher-item-desc" :xalign 0 :limit-width 70 :visible {(it.desc ?: "") != ""} :text {it.desc ?: ""}))
+            (box :visible {it.current ?: false} (icon :class "launcher-current" :name "check_circle" :fill true))))))))
