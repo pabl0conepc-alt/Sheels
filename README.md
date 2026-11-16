@@ -80,6 +80,22 @@ O Caelestia desenha a moldura e os painéis como um único SDF ("blob"). No EWW/
 
 ## Instalação (NixOS)
 
+### Jeito fácil: um comando
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/pabl0conepc-alt/Sheels/main/install.sh | bash
+```
+
+O instalador faz tudo sozinho:
+- cria `/etc/nixos/sheels.nix` e o adiciona ao `configuration.nix`, guardando um backup em `configuration.nix.bak-sheels`;
+- inclui também o driftwm, se ainda não estiver configurado;
+- recompila o sistema usando pouca memória;
+- roda o `sheels setup` (atalhos do Caelestia no driftwm, terminal com fastfetch e a pasta de wallpapers).
+
+Depois é só sair da sessão e escolher **driftwm** no login. Para **atualizar**, rode o mesmo comando de novo. Para desinstalar, apague `/etc/nixos/sheels.nix` e a linha `./sheels.nix` do `configuration.nix`.
+
+### Jeito manual
+
 São 3 passos em qualquer caso: **(1)** adicionar o módulo, **(2)** `nixos-rebuild switch`, **(3)** rodar `sheels setup` uma vez. O `sheels setup` instala a config do driftwm com os atalhos do Caelestia (e o shell no `autostart`), guardando a sua anterior como `config.toml.bak`. Ele também instala o terminal do Caelestia (foot, fish com a saudação do fastfetch, starship e btop, também com backup `.bak`), cria `~/Pictures/Wallpapers` e confere se está tudo instalado. Use `--no-terminal` para pular o terminal.
 
 ### A) Sem flakes (o mais simples)
