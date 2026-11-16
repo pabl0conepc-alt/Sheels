@@ -66,7 +66,7 @@ impl Battery {
         let s = &i.snap;
         json!({
             "present": s.present,
-            "pct": s.pct.round(),
+            "pct": s.pct.round() as i64,
             "charging": s.charging,
             "full": s.full,
             "onAc": s.on_ac,

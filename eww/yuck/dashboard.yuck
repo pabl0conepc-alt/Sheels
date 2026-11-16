@@ -128,7 +128,7 @@
       (button :class "media-btn play ${media.playing ? 'playing' : ''}" :onclick "sheels media play-pause"
         (icon :name {media.playing ? "pause" : "play_arrow"} :fill true))
       (button :class "media-btn" :onclick "sheels media next" (icon :name "skip_next" :fill true)))
-    (image :class "bongocat" :path "${assets}/bongocat-sm.gif")))
+    (image :class "bongocat" :path "${assets}/bongocat-sm.${media.playing ? 'gif' : 'png'}")))
 
 ; ---------------------------------------------------------------- media tab
 (defwidget dash-media []
@@ -161,12 +161,13 @@
       (for p in {media.players}
         (button :class "player-chip ${p.bus == media.bus ? 'active' : ''}" :onclick "sheels media player ${p.bus}"
           (label :text {p.name})))
-      (image :class "bongocat" :path "${assets}/bongocat-md.gif"))))
+      (image :class "bongocat" :path "${assets}/bongocat-md.${media.playing ? 'gif' : 'png'}"))))
 
 ; ---------------------------------------------------------------- performance tab
 (defwidget perf-hero [title icon value sub temp tempPct ?cls]
   (box :class "card perf-hero ${cls ?: ''}" :orientation "h" :space-evenly false
     (overlay :class "perf-ring-wrap"
+      (box :class "perf-ring-base")
       (circular-progress :class "perf-ring-track" :value 100 :thickness 10 :start-at 75)
       (circular-progress :class "perf-ring" :value value :thickness 10 :start-at 75 :clockwise true)
       (box :orientation "v" :space-evenly false :halign "center" :valign "center"
@@ -209,6 +210,7 @@
           (icon :class "perf-card-icon" :name "swap_vert" :fill true)
           (label :class "perf-title" :xalign 0 :hexpand true :text "Network"))
         (overlay :class "perf-graph"
+          (box :class "perf-graph-base")
           (graph :class "net-down" :value {sys.downHist?.[29] ?: 0} :time-range "30s" :min 0 :max 100 :dynamic true :line-style "round")
           (graph :class "net-up" :value {sys.upHist?.[29] ?: 0} :time-range "30s" :min 0 :max 100 :dynamic true :line-style "round"))
         (box :orientation "h" :space-evenly true

@@ -89,11 +89,11 @@ impl Audio {
         };
         json!({
             "available": i.available,
-            "vol": (sink.vol * 100.0).round(),
+            "vol": (sink.vol * 100.0).round() as i64,
             "muted": sink.muted,
             "icon": icon_for(sink.vol, sink.muted),
             "sink": sink.desc,
-            "micVol": (src.vol * 100.0).round(),
+            "micVol": (src.vol * 100.0).round() as i64,
             "micMuted": src.muted,
             "micIcon": mic_icon(src.vol, src.muted),
             "source": src.desc,

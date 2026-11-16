@@ -176,7 +176,7 @@ fn storage() -> Value {
         let used = total - free;
         out.push(json!({
             "mount": mnt, "name": if mnt == "/" { "Root".to_string() } else { mnt.rsplit('/').next().unwrap_or(&mnt).to_string() },
-            "used": human_bytes(used, true), "total": human_bytes(total, true), "pct": (used / total * 100.0).round(),
+            "used": human_bytes(used, true), "total": human_bytes(total, true), "pct": (used / total * 100.0).round() as i64,
         }));
         if out.len() >= 4 {
             break;
@@ -260,25 +260,25 @@ impl SysMon {
         let i = self.inner.lock().unwrap();
         let maxn = i.net_down_hist.iter().chain(i.net_up_hist.iter()).cloned().fold(1024.0, f64::max);
         let v = json!({
-            "cpu": (cpu_pct * 100.0).round(),
+            "cpu": (cpu_pct * 100.0).round() as i64,
             "cpuName": i.cpu_name,
             "cpuTemp": temp(cpu_temp),
-            "cpuTempPct": (temp_frac(cpu_temp) * 100.0).round(),
-            "gpu": gpu_busy.map(|g| (g * 100.0).round()),
+            "cpuTempPct": (temp_frac(cpu_temp) * 100.0).round() as i64,
+            "gpu": gpu_busy.map(|g| (g * 100.0).round() as i64),
             "gpuName": i.gpu_name,
             "gpuTemp": temp(gpu_temp),
-            "gpuTempPct": (temp_frac(gpu_temp) * 100.0).round(),
+            "gpuTempPct": (temp_frac(gpu_temp) * 100.0).round() as i64,
             "hasGpu": gpu_kind.is_some(),
             "memUsed": human_bytes(mem.0 as f64, true),
             "memTotal": human_bytes(mem.1 as f64, true),
-            "mem": if mem.1 > 0 { (mem.0 as f64 / mem.1 as f64 * 100.0).round() } else { 0.0 },
+            "mem": if mem.1 > 0 { (mem.0 as f64 / mem.1 as f64 * 100.0).round() as i64 } else { 0 },
             "storage": i.storage,
             "down": format!("{}/s", human_bytes(net.0, true)),
             "up": format!("{}/s", human_bytes(net.1, true)),
             "totalDown": human_bytes(i.total_down as f64, true),
             "totalUp": human_bytes(i.total_up as f64, true),
-            "downHist": i.net_down_hist.iter().map(|x| (x / maxn * 100.0).round()).collect::<Vec<_>>(),
-            "upHist": i.net_up_hist.iter().map(|x| (x / maxn * 100.0).round()).collect::<Vec<_>>(),
+            "downHist": i.net_down_hist.iter().map(|x| (x / maxn * 100.0).round() as i64).collect::<Vec<_>>(),
+            "upHist": i.net_up_hist.iter().map(|x| (x / maxn * 100.0).round() as i64).collect::<Vec<_>>(),
             "uptime": uptime(),
         });
         drop(i);

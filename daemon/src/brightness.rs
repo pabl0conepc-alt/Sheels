@@ -39,11 +39,11 @@ fn find_device() -> Option<PathBuf> {
 impl Brightness {
     pub fn json(&self) -> Value {
         let i = self.inner.lock().unwrap();
-        let pct = if i.max > 0.0 { (i.cur / i.max * 100.0).round() } else { 0.0 };
+        let pct = if i.max > 0.0 { (i.cur / i.max * 100.0).round() as i64 } else { 0 };
         json!({
             "available": i.dev.is_some(),
             "pct": pct,
-            "icon": if pct >= 66.0 { "brightness_high" } else if pct >= 33.0 { "brightness_medium" } else { "brightness_low" },
+            "icon": if pct >= 66 { "brightness_high" } else if pct >= 33 { "brightness_medium" } else { "brightness_low" },
         })
     }
 
