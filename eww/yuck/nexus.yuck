@@ -174,7 +174,7 @@ __SHEELS_EOF__")
           (box :space-evenly false
             (icon :class "nx-rowicon" :name {n.icon} :fill true)
             (nx-rowtext :label {n.ssid} :desc {n.active ? "Connected" : n.secure ? "Secured" : "Open"})
-            (icon :class "nx-chev" :visible {n.active} :name "check")))))
+            (box :visible {n.active} (icon :class "nx-chev" :name "check"))))))
     (box :visible {(ui.wifiAskPassword ?: "") != ""} :class "nx-row" :space-evenly false
       (label :class "nx-label" :text "Password")
       (overlay :class "nx-entry" :hexpand true
@@ -283,12 +283,12 @@ __SHEELS_EOF__")))
         (box :space-evenly false
           (icon :class "nx-rowicon" :name {mic ? "mic" : "speaker"} :fill {d.active})
           (nx-rowtext :label {d.desc} :desc {d.active ? "Default" : ""})
-          (icon :class "nx-chev" :visible {d.active} :name "check"))))))
+          (box :visible {d.active} (icon :class "nx-chev" :name "check")))))))
 
 (defwidget nx-app-volumes-row []
   (box :class "nx-card" :orientation "v"
     (nx-nav :icon "tune" :label "App volumes"
-            :desc {arraylength(nexus.appVols) == 0 ? "No apps playing audio" : "${arraylength(nexus.appVols)} apps playing audio"}
+            :desc {arraylength(nexus.appVols) == 0 ? "No apps playing audio" : arraylength(nexus.appVols) == 1 ? "1 app playing audio" : "${arraylength(nexus.appVols)} apps playing audio"}
             :cmd "sheels nexus sub 1")))
 
 (defwidget nx-app-volumes []
