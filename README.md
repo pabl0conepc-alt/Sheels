@@ -83,7 +83,7 @@ O Caelestia desenha a moldura e os painéis como um único SDF ("blob"). No EWW/
 ### Jeito fácil: um comando
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/pabl0conepc-alt/Sheels/main/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/pabl0conepc-alt/Cealestia-on-rust/main/install.sh | bash
 ```
 
 O instalador faz tudo sozinho:
@@ -106,7 +106,7 @@ No `/etc/nixos/configuration.nix`:
 {
   imports = [
     ./hardware-configuration.nix
-    "${builtins.fetchTarball "https://github.com/pabl0conepc-alt/Sheels/archive/main.tar.gz"}/nix/module.nix"
+    "${builtins.fetchTarball "https://github.com/pabl0conepc-alt/Cealestia-on-rust/archive/main.tar.gz"}/nix/module.nix"
   ];
 
   programs.sheels.enable = true;
@@ -122,7 +122,7 @@ No `/etc/nixos/flake.nix`, acrescente o input e o módulo:
 {
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
-    sheels.url = "github:pabl0conepc-alt/Sheels";
+    sheels.url = "github:pabl0conepc-alt/Cealestia-on-rust";
     sheels.inputs.nixpkgs.follows = "nixpkgs";
   };
 
@@ -160,7 +160,7 @@ O módulo instala as fontes (Material Symbols Rounded, Rubik, CaskaydiaCove NF, 
 
 > **A primeira instalação compila o daemon e o EWW** (o EWW leva um patch). Leva alguns minutos e o build do EWW é limitado a 2 jobs para caber em máquinas com pouca RAM. Se ainda assim faltar memória, use `sudo nixos-rebuild switch --option cores 1`.
 
-Para testar sem instalar, dentro de uma sessão driftwm: `nix run github:pabl0conepc-alt/Sheels -- daemon`.
+Para testar sem instalar, dentro de uma sessão driftwm: `nix run github:pabl0conepc-alt/Cealestia-on-rust -- daemon`.
 
 ---
 

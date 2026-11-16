@@ -93,7 +93,7 @@ rustPlatform.buildRustPackage {
 
   meta = {
     description = "Caelestia Shell clone for the driftwm compositor, rendered with EWW and driven by a Rust daemon";
-    homepage = "https://github.com/pabl0conepc-alt/Sheels";
+    homepage = "https://github.com/pabl0conepc-alt/Cealestia-on-rust";
     license = lib.licenses.gpl3Only;
     platforms = lib.platforms.linux;
     mainProgram = "sheels";

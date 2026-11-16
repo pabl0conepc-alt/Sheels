@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Sheels installer for NixOS — one command, also used to update:
 #
-#   curl -fsSL https://raw.githubusercontent.com/pabl0conepc-alt/Sheels/main/install.sh | bash
+#   curl -fsSL https://raw.githubusercontent.com/pabl0conepc-alt/Cealestia-on-rust/main/install.sh | bash
 #
 # It adds /etc/nixos/sheels.nix (imported from configuration.nix, a backup is
 # kept), rebuilds the system with little memory, then runs `sheels setup` for
@@ -9,7 +9,7 @@
 set -euo pipefail
 
 REF="${SHEELS_REF:-main}"
-URL="https://github.com/pabl0conepc-alt/Sheels/archive/${REF}.tar.gz"
+URL="https://github.com/pabl0conepc-alt/Cealestia-on-rust/archive/${REF}.tar.gz"
 CONF=/etc/nixos/configuration.nix
 MOD=/etc/nixos/sheels.nix
 

@@ -1,6 +1,6 @@
 # NixOS module for configurations without flakes:
 #
-#   imports = [ "${builtins.fetchTarball "https://github.com/pabl0conepc-alt/Sheels/archive/main.tar.gz"}/nix/module.nix" ];
+#   imports = [ "${builtins.fetchTarball "https://github.com/pabl0conepc-alt/Cealestia-on-rust/archive/main.tar.gz"}/nix/module.nix" ];
 #   programs.sheels.enable = true;
 #
 # driftwm itself must be enabled separately (programs.driftwm.enable from
