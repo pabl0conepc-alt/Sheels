@@ -255,7 +255,13 @@ pub struct Lock {
 }
 impl Default for Lock {
     fn default() -> Self {
-        Lock { command: vec!["hyprlock".into(), "--immediate-render".into()] }
+        Lock {
+            command: vec![
+                "hyprlock".into(),
+                "-c".into(),
+                crate::util::state_dir().join("theme/hyprlock.conf").to_string_lossy().into_owned(),
+            ],
+        }
     }
 }
 

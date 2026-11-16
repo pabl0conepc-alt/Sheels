@@ -1,0 +1,20 @@
+/* Caelestia-style login (ReGreet, GTK4). Colours: Caelestia default dark. */
+window, .background { background-color: #191114; color: #efdfe2; font-family: "Google Sans Flex", "Rubik", sans-serif; }
+frame.background, box.background { background-color: rgba(25, 17, 20, 0.92); border-radius: 56px; padding: 32px; }
+label { color: #efdfe2; }
+#clock, .clock { font-size: 96px; font-weight: 500; color: #ffb0ca; }
+entry {
+  background-color: #261d20; color: #efdfe2;
+  border-radius: 999px; border: none; min-height: 44px; padding: 0 18px;
+  caret-color: #ffb0ca;
+}
+entry:focus { box-shadow: 0 0 0 2px #ffb0ca; }
+button {
+  background-color: #31282a; color: #efdfe2; border-radius: 999px; border: none;
+  min-height: 40px; padding: 0 18px;
+}
+button:hover { background-color: #3c3235; }
+button.suggested-action { background-color: #ffb0ca; color: #541d34; }
+button.destructive-action { background-color: #ffb4ab; color: #690005; }
+combobox button, dropdown button { border-radius: 16px; }
+popover contents { background-color: #261d20; border-radius: 16px; }

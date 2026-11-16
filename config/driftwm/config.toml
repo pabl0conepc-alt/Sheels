@@ -12,7 +12,7 @@ window_placement = "auto"
 # The shell itself (bar, panels, notifications, OSD…) + idle/lock + clipboard.
 autostart = [
   "sheels daemon",
-  "swayidle -w timeout 300 'sheels lock' timeout 600 'driftwm msg action power-off-monitors 2>/dev/null' before-sleep 'sheels lock'",
+  "swayidle -w timeout 300 'sheels lock' before-sleep 'sheels lock' lock 'sheels lock'",
   "wl-paste --watch cliphist store",
 ]
 
@@ -135,11 +135,11 @@ type = "default"
 "mod+shift+s" = "spawn sheels screenshot region"
 "mod+shift+alt+s" = "spawn sheels screenshot region"
 "mod+shift+c" = "spawn hyprpicker -a"
-"mod+v" = "spawn sh -c 'cliphist list | fuzzel --dmenu --config ~/.local/state/sheels/theme/fuzzel.ini | cliphist decode | wl-copy'"
+"mod+v" = "spawn sheels-clipboard"
 "mod+period" = "spawn sheels-emoji"
-"ctrl+alt+r" = "spawn sheels-record"
-"mod+alt+r" = "spawn sheels-record --sound"
-"mod+shift+alt+r" = "spawn sheels-record --region"
+"ctrl+alt+r" = "spawn sheels record fullscreen"
+"mod+alt+r" = "spawn sheels record sound"
+"mod+shift+alt+r" = "spawn sheels record region"
 
 # ---- media / volume / brightness (OSD is shown by the shell)
 "XF86AudioRaiseVolume" = "spawn sheels volume up"

@@ -58,7 +58,8 @@ pub fn send(args: &[String]) -> i32 {
     }
     let mut reply = String::new();
     let _ = BufReader::new(s).read_line(&mut reply);
-    let reply = reply.trim_end();
+    let reply = reply.trim_end_matches(['\n', '\r']).replace('\u{1e}', "\n");
+    let reply = reply.as_str();
     if let Some(err) = reply.strip_prefix("ERR ") {
         eprintln!("sheels: {err}");
         1

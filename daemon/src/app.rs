@@ -71,6 +71,10 @@ impl App {
         self.hub.publish("status", &v);
     }
 
+    pub fn ui_active_height(&self) -> i32 {
+        self.ui.active_height_pub()
+    }
+
     /// Status icons currently shown in the bar, top to bottom (lockStatus
     /// collapses when neither Caps nor Num Lock is on, as in Caelestia).
     pub fn status_icon_order(&self) -> Vec<String> {

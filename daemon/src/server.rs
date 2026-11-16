@@ -79,6 +79,8 @@ async fn handle(s: UnixStream) {
         Ok(s) => s,
         Err(e) => format!("ERR {e}"),
     };
+    // One reply per line: multi-line output travels with record separators.
+    let reply = reply.replace('\n', "\u{1e}");
     let _ = w.write_all(reply.as_bytes()).await;
     let _ = w.write_all(b"\n").await;
 }
@@ -162,6 +164,9 @@ pub async fn dispatch(a: Vec<String>) -> Result<String> {
         "lock" => {
             app.ui.close_all().await;
             lock();
+            // Give the locker time to grab the session (swayidle before-sleep
+            // waits for this command).
+            tokio::time::sleep(std::time::Duration::from_millis(800)).await;
             Ok(String::new())
         }
         "idle-inhibit" => {
@@ -213,6 +218,8 @@ pub async fn dispatch(a: Vec<String>) -> Result<String> {
             crate::theme::screenshot(sub).await
         }
         "record" => app.rec.command(sub, arg(&a, 2)).await,
+        "lockinfo" if sub == "cpu" => Ok(cpu_pct().await),
+        "lockinfo" => Ok(lockinfo(sub)),
         "cal" => {
             app.info.cal_cmd(sub);
             Ok(String::new())
@@ -297,4 +304,124 @@ fn toggle_idle_inhibit() {
         }
     }
     app.publish_status();
+}
+
+/// Text snippets for the hyprlock lock screen (Caelestia's lock widgets).
+/// Multi-line blocks are padded to a fixed size so hyprlock's centred
+/// anchoring keeps them in place.
+fn lockinfo(key: &str) -> String {
+    let app = app();
+    let get = |t: &str| app.hub.get(t).and_then(|s| serde_json::from_str::<serde_json::Value>(&s).ok()).unwrap_or_default();
+    let s = |v: &serde_json::Value| v.as_str().map(str::to_string).unwrap_or_else(|| v.to_string());
+    let esc = |t: &str| t.replace('&', "&amp;").replace('<', "&lt;").replace('>', "&gt;");
+    let pad = |lines: Vec<String>, n: usize, w: usize| -> String {
+        let mut out: Vec<String> = lines
+            .into_iter()
+            .take(n)
+            .map(|l| {
+                let l: String = l.chars().take(w).collect();
+                let k = l.chars().count();
+                esc(&format!("{l}{}", " ".repeat(w.saturating_sub(k))))
+            })
+            .collect();
+        while out.len() < n {
+            out.push(" ".repeat(w));
+        }
+        out.join("\n")
+    };
+    let icon = |name: &str, fill: bool| format!("<span font_desc=\"Material Symbols Rounded @FILL={}\">{name}</span>", fill as u8);
+    match key {
+        "weather-desc" => {
+            let w = get("info")["weather"].clone();
+            esc(&if w["available"] == true { s(&w["desc"]) } else { "No weather".into() })
+        }
+        "weather-big" => {
+            let w = get("info")["weather"].clone();
+            let (t, i) = if w["available"] == true { (s(&w["temp"]), s(&w["icon"])) } else { ("--°C".into(), "cloud_alert".into()) };
+            format!("{}  {}", esc(&t), icon(&i, false))
+        }
+        "weather-feels" => {
+            let w = get("info")["weather"].clone();
+            format!("Feels like {}", esc(&if w["available"] == true { s(&w["feels"]) } else { "--°C".into() }))
+        }
+        "weather-hilo" => {
+            let w = get("info")["weather"].clone();
+            let d = &w["days"][0];
+            if w["available"] == true && d.is_object() {
+                esc(&format!("High {} • Low {}", s(&d["max"]), s(&d["min"])))
+            } else {
+                "High --°C • Low --°C".into()
+            }
+        }
+        "fetch" => {
+            let i = get("info");
+            pad(
+                vec![
+                    format!("OS  : {}", { let d = s(&i["distro"]); if d.chars().count() > 14 { format!("{}…", d.chars().take(13).collect::<String>()) } else { d } }),
+                    format!("WM  : {}", s(&i["wm"])),
+                    format!("USER: {}", s(&i["user"])),
+                    format!("UP  : {}", s(&i["uptime"]).trim_start_matches("up ")),
+                ],
+                4,
+                20,
+            )
+        }
+        "media-title" => {
+            let m = get("media");
+            esc(&if m["available"] == true { s(&m["title"]) } else { "Nothing playing".into() })
+        }
+        "media-artist" => {
+            let m = get("media");
+            esc(&if m["available"] == true { s(&m["artist"]) } else { "Try playing some music!".into() })
+        }
+        "media-icon" => icon(if get("media")["playing"] == true { "pause" } else { "play_arrow" }, true),
+        "cpu" | "mem" | "disk" => {
+            // The resource monitor only ticks on demand; sample directly.
+            match key {
+                "mem" => {
+                    let m = std::fs::read_to_string("/proc/meminfo").unwrap_or_default();
+                    let f = |k: &str| m.lines().find(|l| l.starts_with(k)).and_then(|l| l.split_whitespace().nth(1)).and_then(|x| x.parse::<f64>().ok()).unwrap_or(0.0);
+                    let (t, a) = (f("MemTotal:"), f("MemAvailable:"));
+                    if t > 0.0 { format!("{:.0}%", (t - a) / t * 100.0) } else { "--%".into() }
+                }
+                _ => {
+                    let c = std::ffi::CString::new("/").unwrap();
+                    let mut st: libc::statvfs = unsafe { std::mem::zeroed() };
+                    if unsafe { libc::statvfs(c.as_ptr(), &mut st) } == 0 && st.f_blocks > 0 {
+                        format!("{:.0}%", 100.0 * (1.0 - st.f_bavail as f64 / st.f_blocks as f64))
+                    } else {
+                        "--%".into()
+                    }
+                }
+            }
+        }
+        "notifs" => {
+            let n = get("notifs");
+            let count = n["count"].as_u64().unwrap_or(0);
+            let mut lines = vec![if count == 0 { "No notifications".to_string() } else { format!("{count} notification{}", if count == 1 { "" } else { "s" }) }, String::new()];
+            for g in n["groups"].as_array().cloned().unwrap_or_default().iter().take(5) {
+                lines.push(format!("{}  ·  {}", s(&g["app"]), s(&g["time"])));
+                for x in g["notifs"].as_array().cloned().unwrap_or_default().iter().take(2) {
+                    lines.push(format!("  {}", s(&x["summary"])));
+                }
+                lines.push(String::new());
+            }
+            pad(lines, 18, 36)
+        }
+        _ => String::new(),
+    }
+}
+
+async fn cpu_pct() -> String {
+    fn read() -> Option<(u64, u64)> {
+        let st = std::fs::read_to_string("/proc/stat").ok()?;
+        let v: Vec<u64> = st.lines().next()?.split_whitespace().skip(1).filter_map(|x| x.parse().ok()).collect();
+        Some((v.get(3)? + v.get(4).copied().unwrap_or(0), v.iter().take(8).sum()))
+    }
+    let a = read();
+    tokio::time::sleep(std::time::Duration::from_millis(250)).await;
+    match (a, read()) {
+        (Some((i1, t1)), Some((i2, t2))) if t2 > t1 => format!("{:.0}%", 100.0 * (1.0 - (i2 - i1) as f64 / (t2 - t1) as f64)),
+        _ => "--%".into(),
+    }
 }

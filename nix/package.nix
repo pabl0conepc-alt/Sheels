@@ -1,0 +1,85 @@
+{
+  lib,
+  rustPlatform,
+  makeWrapper,
+  pkg-config,
+  eww,
+  pulseaudio,
+  brightnessctl,
+  networkmanager,
+  curl,
+  wl-clipboard,
+  cliphist,
+  grim,
+  slurp,
+  wf-recorder,
+  hyprlock,
+  hyprpicker,
+  fuzzel,
+  swayidle,
+  libqalculate,
+  power-profiles-daemon,
+  xdg-utils,
+  ddcutil,
+  procps,
+  systemd,
+}:
+let
+  runtimeDeps = [
+    eww
+    pulseaudio # pactl (works with pipewire-pulse)
+    brightnessctl
+    networkmanager # nmcli
+    curl
+    wl-clipboard
+    cliphist
+    grim
+    slurp
+    wf-recorder
+    hyprlock
+    hyprpicker
+    fuzzel
+    swayidle
+    libqalculate # qalc for the launcher calculator
+    power-profiles-daemon # powerprofilesctl
+    xdg-utils
+    ddcutil
+    procps # pidof
+    systemd # systemd-inhibit, systemctl
+  ];
+in
+rustPlatform.buildRustPackage {
+  pname = "sheels";
+  version = "1.0.0";
+
+  src = lib.cleanSourceWith {
+    src = ../.;
+    filter = path: _type: !(lib.hasInfix "/target" path);
+  };
+  cargoRoot = "daemon";
+  buildAndTestSubdir = "daemon";
+  cargoLock.lockFile = ../daemon/Cargo.lock;
+
+  nativeBuildInputs = [ makeWrapper pkg-config ];
+
+  postInstall = ''
+    share=$out/share/sheels
+    mkdir -p $share $out/share/fonts/truetype
+    cp -r eww schemes templates config $share/
+    cp fonts/*.ttf $out/share/fonts/truetype/
+    install -Dm755 bin/sheels-emoji bin/sheels-clipboard -t $out/bin
+    for b in $out/bin/sheels $out/bin/sheels-emoji $out/bin/sheels-clipboard; do
+      wrapProgram $b \
+        --prefix PATH : ${lib.makeBinPath runtimeDeps}:$out/bin \
+        --set-default SHEELS_SHARE $share
+    done
+  '';
+
+  meta = {
+    description = "Caelestia Shell clone for the driftwm compositor, rendered with EWW and driven by a Rust daemon";
+    homepage = "https://github.com/pabl0conepc-alt/Sheels";
+    license = lib.licenses.gpl3Only;
+    platforms = lib.platforms.linux;
+    mainProgram = "sheels";
+  };
+}

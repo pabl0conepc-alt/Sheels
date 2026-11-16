@@ -99,6 +99,10 @@ impl Ui {
         Some(st.outputs.iter().find(|o| o.3).or(st.outputs.first()).map(|o| o.0.clone()).unwrap_or_else(|| "0".into()))
     }
 
+    pub fn active_height_pub(&self) -> i32 {
+        self.active_size().1
+    }
+
     fn active_height(&self) -> i32 {
         self.active_size().1
     }

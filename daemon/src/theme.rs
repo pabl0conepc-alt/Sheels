@@ -650,6 +650,12 @@ impl Theme {
 // ---------------------------------------------------------------- outputs
 
 fn render(template: &str, st: &SchemeState) -> String {
+    render_with(template, st, false)
+}
+
+/// `{{ name.hex }}` / `{{ name.rgb }}` (sheels) and `{{ $name }}` (caelestia-cli
+/// templates, `hash` decides whether a leading '#' is added).
+fn render_with(template: &str, st: &SchemeState, hash: bool) -> String {
     let mut out = String::with_capacity(template.len());
     let mut rest = template;
     while let Some(start) = rest.find("{{") {
@@ -661,8 +667,14 @@ fn render(template: &str, st: &SchemeState) -> String {
         let expr = rest[start + 2..start + end].trim();
         let val = if expr == "mode" {
             Some(st.mode.clone())
+        } else if expr == "share" {
+            Some(share_dir().to_string_lossy().into_owned())
+        } else if expr == "face" {
+            Some(expand(&crate::app::cfg().paths.face).to_string_lossy().into_owned())
         } else if expr == "wallpaper" {
             Some(st.wallpaper.clone())
+        } else if let Some(name) = expr.strip_prefix('$') {
+            st.colours.get(name).map(|h| if hash { format!("#{h}") } else { h.clone() })
         } else if let Some((name, fmt)) = expr.rsplit_once('.') {
             st.colours.get(name).map(|h| match fmt {
                 "hex" => h.clone(),
@@ -692,12 +704,94 @@ fn render_templates(st: &SchemeState) {
         let Ok(rd) = std::fs::read_dir(&dir) else { continue };
         for e in rd.flatten() {
             if let Ok(t) = std::fs::read_to_string(e.path()) {
-                let _ = write_if_changed(&out_dir.join(e.file_name()), &render(&t, st));
+                // Same choice as caelestia-cli's gen_replace(hash=…).
+                let fname = e.file_name().to_string_lossy().to_string();
+                let hash = matches!(fname.as_str(), "pandora.json" | "btop.theme" | "nvtop.colors" | "htop.theme" | "gtk.css" | "thunar.css" | "qtdark.colors" | "qtlight.colors" | "warp.yaml" | "cava.conf");
+                let mut out = render_with(&t, st, hash);
+                if e.file_name() == "hyprlock.conf" {
+                    out = scale_lock(&out);
+                }
+                let _ = write_if_changed(&out_dir.join(e.file_name()), &out);
             }
         }
     }
-    // Refresh running foot terminals via OSC is not portable; foot picks the
-    // include up for new windows. Tell GTK apps by touching the settings.
+    apply_terms(st);
+}
+
+fn osc(c: &str, idx: &str) -> String {
+    let c = if c.len() >= 6 { c } else { "000000" };
+    format!("\x1b]{idx};rgb:{}/{}/{}\x1b\\", &c[0..2], &c[2..4], &c[4..6])
+}
+
+/// caelestia-cli `gen_sequences` + `apply_terms`: recolour every open
+/// terminal instantly and keep the sequences for new shells (fish config
+/// cats ~/.local/state/sheels/sequences.txt).
+fn apply_terms(st: &SchemeState) {
+    let c = |k: &str| st.colours.get(k).cloned().unwrap_or_default();
+    let mut seq = String::new();
+    seq += &osc(&c("onSurface"), "10");
+    seq += &osc(&c("surface"), "11");
+    seq += &osc(&c("secondary"), "12");
+    seq += &osc(&c("secondary"), "17");
+    for i in 0..16 {
+        let v = c(&format!("term{i}"));
+        if !v.is_empty() {
+            seq += &osc(&v, &format!("4;{i}"));
+        }
+    }
+    seq += &osc(&c("primary"), "4;16");
+    seq += &osc(&c("secondary"), "4;17");
+    seq += &osc(&c("tertiary"), "4;18");
+    let path = state_dir().join("sequences.txt");
+    if !write_if_changed(&path, &seq).unwrap_or(false) {
+        return;
+    }
+    let uid = unsafe { libc::getuid() };
+    if let Ok(rd) = std::fs::read_dir("/dev/pts") {
+        for e in rd.flatten() {
+            if !e.file_name().to_string_lossy().chars().all(|ch| ch.is_ascii_digit()) {
+                continue;
+            }
+            use std::os::unix::fs::{MetadataExt, OpenOptionsExt};
+            if e.metadata().map(|m| m.uid() != uid).unwrap_or(true) {
+                continue;
+            }
+            if let Ok(mut f) = std::fs::OpenOptions::new().write(true).custom_flags(libc::O_NONBLOCK | libc::O_NOCTTY).open(e.path()) {
+                use std::io::Write;
+                let _ = f.write_all(seq.as_bytes());
+            }
+        }
+    }
+}
+
+/// Caelestia sizes its lock to 70% of the screen height (16:9). The template
+/// is authored for 1080p; scale every geometry/font number to the monitor.
+fn scale_lock(conf: &str) -> String {
+    let h = app().ui_active_height() as f64;
+    let k = if h > 0.0 { h / 1080.0 } else { 1.0 };
+    if (k - 1.0).abs() < 0.01 {
+        return conf.to_string();
+    }
+    conf.lines()
+        .map(|l| {
+            let t = l.trim_start();
+            let key = t.split('=').next().unwrap_or("").trim();
+            if matches!(key, "size" | "position" | "font_size" | "rounding" | "line_spacing") {
+                let (lhs, rhs) = l.split_once('=').unwrap();
+                let nums: Vec<String> = rhs
+                    .split(',')
+                    .map(|n| match n.trim().parse::<f64>() {
+                        Ok(v) if v >= 0.0 || key == "position" => format!("{}", (v * k).round() as i64),
+                        _ => n.trim().to_string(),
+                    })
+                    .collect();
+                format!("{lhs}= {}", nums.join(", "))
+            } else {
+                l.to_string()
+            }
+        })
+        .collect::<Vec<_>>()
+        .join("\n")
 }
 
 const BEGIN: &str = "# >>> sheels managed (do not edit inside) >>>";

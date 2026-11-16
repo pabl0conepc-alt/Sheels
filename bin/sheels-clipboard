@@ -1,0 +1,4 @@
+#!/usr/bin/env sh
+# Clipboard history (caelestia `clipboard`): cliphist + fuzzel.
+CONF="${XDG_STATE_HOME:-$HOME/.local/state}/sheels/theme/fuzzel.ini"
+cliphist list | fuzzel --dmenu --config "$CONF" --prompt "  " | cliphist decode | wl-copy
