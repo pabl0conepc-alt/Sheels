@@ -13,14 +13,14 @@
 (defwidget utility-cards []
   (box :orientation "v" :space-evenly false :class "util-cards"
     ; Keep awake
-    (box :class "card util-card" :orientation "h" :space-evenly false
+    (box :class "card util-card" :orientation "h" :space-evenly false :visible {cfg.utilities.keepAwake}
       (box :class "util-icon ${status.idleInhibit ? 'on' : ''}" (label :class "icon" :text "coffee"))
       (box :orientation "v" :space-evenly false :valign "center" :hexpand true :class "util-text"
         (label :class "util-title" :xalign 0 :text "Keep awake")
         (label :class "util-sub" :xalign 0 :text {status.idleInhibit ? "Preventing sleep mode" : "Normal power management"}))
       (switch :on {status.idleInhibit} :cmd "sheels idle-inhibit"))
     ; Screen recorder
-    (box :class "card util-card rec" :orientation "v" :space-evenly false
+    (box :class "card util-card rec" :orientation "v" :space-evenly false :visible {cfg.utilities.screenRecorder}
       (box :orientation "h" :space-evenly false
         (box :class "util-icon ${status.rec.running ? 'on rec' : ''}" (label :class "icon" :text "screen_record"))
         (box :orientation "v" :space-evenly false :valign "center" :hexpand true :class "util-text"
@@ -50,16 +50,21 @@
             (button :class "icon-btn" :onclick "sheels record delete ${r.i}" (label :class "icon" :text "delete_forever"))))))
     ; Quick toggles
     (box :class "card util-card toggles" :orientation "v" :space-evenly false
+         :visible {cfg.utilities.quickToggles && arraylength(cfg.toggleRows?.[0] ?: []) > 0}
       (label :class "util-title" :xalign 0 :text "Quick toggles")
-      (box :orientation "h" :space-evenly true :class "toggle-row"
-        (toggle :icon "wifi" :on {status.net.wifiEnabled} :cmd "sheels wifi toggle")
-        (toggle :icon "bluetooth" :on {status.bt.powered} :cmd "sheels bluetooth toggle")
-        (toggle :icon "mic" :on {!status.audio.micMuted} :cmd "sheels mic mute")
-        (toggle :icon "settings" :on false :cmd "sheels app audio"))
-      (box :orientation "h" :space-evenly true :class "toggle-row"
-        (toggle :icon "gamepad" :on {status.gamemode} :cmd "sheels gamemode")
-        (toggle :icon "smart_display" :on {media.playing} :cmd "sheels media play-pause")
-        (toggle :icon "notifications_off" :on {status.dnd} :cmd "sheels dnd")))))
+      (for row in {cfg.toggleRows ?: []}
+        (box :orientation "h" :space-evenly true :class "toggle-row"
+          (for id in row
+            (quick-toggle :id id)))))))
+
+; Quick toggles (utilities.toggles.*), same ids as Caelestia.
+(defwidget quick-toggle [id]
+  (toggle :icon {id == "wifi" ? "wifi" : id == "bluetooth" ? "bluetooth" : id == "mic" ? "mic" : id == "settings" ? "settings"
+                 : id == "gameMode" ? "gamepad" : id == "dnd" ? "notifications_off" : "vpn_key"}
+          :on {id == "wifi" ? status.net.wifiEnabled : id == "bluetooth" ? status.bt.powered : id == "mic" ? !status.audio.micMuted
+               : id == "gameMode" ? status.gamemode : id == "dnd" ? status.dnd : id == "vpn" ? (status.net.vpnActive ?: false) : false}
+          :cmd {id == "wifi" ? "sheels wifi toggle" : id == "bluetooth" ? "sheels bluetooth toggle" : id == "mic" ? "sheels mic mute"
+                : id == "settings" ? "sheels nexus open" : id == "gameMode" ? "sheels gamemode" : id == "dnd" ? "sheels dnd" : "sheels nexus vpn-toggle"}))
 
 (defwidget toggle [icon on cmd]
   (button :class "toggle ${on ? 'on' : ''}" :onclick cmd

@@ -39,7 +39,9 @@
             (box :hexpand true)
             (button :class "notif-close" :onclick "sheels notifs dismiss ${n.id ?: 0}"
               (label :class "icon" :text "close")))
-          (label :class "notif-body" :xalign 0 :limit-width 46
+          ; notifs.openExpanded: full wrapped body instead of one truncated line.
+          (label :class "notif-body" :xalign 0 :limit-width {cfg.notifs.openExpanded ? 600 : 46}
+                 :wrap {cfg.notifs.openExpanded}
                  :visible {(n.body ?: "") != ""} :text {n.body ?: ""})))
       (box :class "notif-actions" :orientation "h" :space-evenly true :visible {arraylength(n.actions ?: []) > 0}
         (for a in {n.actions ?: []}

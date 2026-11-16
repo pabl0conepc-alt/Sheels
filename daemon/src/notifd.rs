@@ -38,6 +38,9 @@ pub struct Notif {
     pub resident: bool,
     #[serde(default)]
     pub mat_icon: String, // Material symbol fallback
+    /// Shell event toast (utilities.toasts.*): transient, counted against utilities.maxToasts.
+    #[serde(default)]
+    pub toast: bool,
 }
 
 #[derive(Clone, Default)]
@@ -198,12 +201,13 @@ impl Notifd {
         // Group history by app (newest group first), like Caelestia's sidebar.
         let mut order: Vec<String> = vec![];
         let mut groups: HashMap<String, Vec<&Notif>> = HashMap::new();
-        for n in &i.list {
+        for n in i.list.iter().filter(|n| !n.transient) {
             if !groups.contains_key(&n.app) {
                 order.push(n.app.clone());
             }
             groups.entry(n.app.clone()).or_default().push(n);
         }
+        let preview = crate::app::cfg().notifs.group_preview_num.max(1);
         let groups: Vec<Value> = order
             .iter()
             .take(6)
@@ -211,7 +215,7 @@ impl Notifd {
             .map(|(gi, app)| {
                 let ns = &groups[app];
                 let expanded = *i.expanded.get(app).unwrap_or(&false);
-                let shown: Vec<Value> = ns.iter().take(if expanded { 6 } else { 2 }).map(|n| Self::notif_json(n)).collect();
+                let shown: Vec<Value> = ns.iter().take(if expanded { preview.max(6) } else { preview }).map(|n| Self::notif_json(n)).collect();
                 json!({
                     "app": if app.is_empty() { "Unknown" } else { app },
                     "key": app,
@@ -284,7 +288,39 @@ impl Notifd {
             }
             let id = n.id;
             let dnd = app().misc.lock().unwrap().dnd;
-            let popup = !dnd || n.urgency == 2;
+            let critical = n.urgency == 2;
+            // notifs.fullscreen / utilities.toastsFullscreen: popups over fullscreen apps.
+            let fs_ok = !app().ui.is_fullscreen() || {
+                let c = crate::app::cfg();
+                if n.toast {
+                    c.utilities.toasts_fullscreen
+                } else {
+                    match c.notifs.fullscreen.as_str() {
+                        "off" => false,
+                        "critical" => critical,
+                        _ => true,
+                    }
+                }
+            };
+            let popup = (!dnd || critical || n.toast) && fs_ok;
+            // Keep at most utilities.maxToasts toast popups on screen.
+            if popup && n.toast {
+                let max = crate::app::cfg().utilities.max_toasts.max(1);
+                let toast_slots: Vec<usize> = (0..SLOTS)
+                    .filter(|k| {
+                        i.slots[*k].as_ref().is_some_and(|s| !s.closing && i.list.iter().any(|x| x.id == s.id && x.toast))
+                    })
+                    .collect();
+                if toast_slots.len() >= max {
+                    // Drop the oldest toast outright (it is transient).
+                    if let Some(k) = toast_slots.iter().copied().min_by_key(|k| i.slots[*k].as_ref().map(|s| s.id).unwrap_or(0)) {
+                        let old = i.slots[k].take().map(|s| s.id);
+                        if let Some(old) = old {
+                            i.list.retain(|x| x.id != old);
+                        }
+                    }
+                }
+            }
             i.list.insert(0, n);
             i.list.truncate(HISTORY_MAX);
             if popup && !i.slots.iter().flatten().any(|s| s.id == id) {
@@ -371,6 +407,28 @@ impl Notifd {
         if existed {
             emit_closed(id, reason).await;
         }
+    }
+
+    /// Event toast (Caelestia utilities toasts): transient popup gated by
+    /// the matching `utilities.toasts.*` switch.
+    pub fn toast(&self, enabled: bool, title: &str, body: &str, mat_icon: &str) {
+        if !enabled {
+            return;
+        }
+        let n = Notif {
+            app: "Sheels".into(),
+            summary: title.into(),
+            body: body.into(),
+            mat_icon: mat_icon.into(),
+            urgency: 1,
+            time: crate::util::now_ms(),
+            transient: true,
+            toast: true,
+            ..Default::default()
+        };
+        tokio::spawn(async move {
+            app().notifs.add(n, 0, 3000).await;
+        });
     }
 
     pub fn internal(&self, title: &str, body: &str, mat_icon: &str, critical: bool) {
@@ -581,6 +639,7 @@ impl Server {
             time: crate::util::now_ms(),
             transient: flag("transient"),
             resident: flag("resident"),
+            toast: false,
         };
         notifd.add(n, replaces_id, expire_timeout).await
     }

@@ -13,16 +13,23 @@
          },
          // @prop onchange - Command to run when the text changes. The placeholder `{}` will be replaced by the value
          // @prop timeout - timeout of the command. Default: "200ms"
-@@ -515,6 +519,29 @@
+@@ -515,6 +519,36 @@
          // @prop password - if the input is obscured
          prop(password: as_bool = false) {
              gtk_widget.set_visibility(!password);
++            // (sheels) pasted text never contains newlines: values reach `sh -c` via heredocs
++            gtk_widget.set_truncate_multiline(true);
 +        },
 +        // @prop onkeypress - (sheels) command run for Escape/Up/Down/Tab/Page_Up/Page_Down. `{}` is the key name.
 +        // @prop timeout - timeout of the command. Default: "200ms"
 +        prop(timeout: as_duration = Duration::from_millis(200), onkeypress: as_string) {
 +            connect_signal_handler!(gtk_widget, gtk_widget.connect_key_press_event(move |_, evt| {
 +                let name = evt.keyval().name().map(|n| n.to_string()).unwrap_or_default();
++                // Ctrl+h/j/k/l are reported as "C-h"… (launcher.vimKeybinds)
++                if evt.state().contains(ModifierType::CONTROL_MASK) && matches!(name.as_str(), "h" | "j" | "k" | "l") {
++                    run_command(timeout, &onkeypress, &[format!("C-{name}")]);
++                    return glib::Propagation::Stop;
++                }
 +                match name.as_str() {
 +                    "Escape" | "Up" | "Down" | "Tab" | "ISO_Left_Tab" | "Page_Up" | "Page_Down" => {
 +                        run_command(timeout, &onkeypress, &[name]);
@@ -43,3 +50,89 @@
          }
      });
      Ok(gtk_widget)
+--- a/crates/eww/src/state/scope_graph.rs
++++ b/crates/eww/src/state/scope_graph.rs
+@@ -282,6 +282,11 @@
+         // Now find subscopes that reference this variable
+         let affected_subscopes = self.graph.subscopes_referencing(scope_index, updated_var);
+         for affected_subscope in affected_subscopes {
++            // (sheels) a listener above (e.g. a `literal` rebuilding its
++            // content) may already have removed this subscope.
++            if self.graph.scope_at(affected_subscope).is_none() {
++                continue;
++            }
+             self.notify_value_changed(affected_subscope, updated_var)?;
+         }
+         Ok(())
+@@ -294,7 +299,10 @@
+             for listener in triggered_listeners.clone() {
+                 let required_variables = self.lookup_variables_in_scope(scope_index, &listener.needed_variables)?;
+                 if let Err(err) = (*listener.f)(self, required_variables).context("Error while updating UI after state change") {
+-                    error_handling_ctx::print_error(err);
++                    // (sheels) updates for widgets destroyed in this same pass are expected
++                    if !format!("{err:?}").contains("widget got deallocated") {
++                        error_handling_ctx::print_error(err);
++                    }
+                 }
+             }
+         }
+--- a/crates/eww/src/widgets/def_widget_macro.rs
++++ b/crates/eww/src/widgets/def_widget_macro.rs
+@@ -46,6 +46,8 @@
+                                 // create a weak reference to the widget, such that this listener doesn't prevent the actual widget from
+                                 // getting deallocated (garbage collected by the gtk runtime)
+                                 let $gtk_widget = gdk::glib::clone::Downgrade::downgrade(&$gtk_widget);
++                                // (sheels) last evaluated attribute values, to skip no-op updates
++                                let last_values = ::std::cell::RefCell::new(None::<Vec<Option<String>>>);
+                                 move |$scope_graph, values| {
+                                     // TODO when this fails, shouldn't we technically remove the listener somehow? Need to analyze when exactly this happens.
+                                     let $gtk_widget = gdk::glib::clone::Upgrade::upgrade(&$gtk_widget)
+@@ -56,6 +58,22 @@
+                                     // allow $gtk_widget to never be used, by creating a reference that gets immediately discarded
+                                     {let _ = &$gtk_widget;};
+ 
++                                    // (sheels) GTK setters are not free (e.g. GtkLabel queues a resize even
++                                    // for identical text): only apply when some attribute value changed.
++                                    {
++                                        let key: Vec<Option<String>> = vec![$(
++                                            match attr_map.get(::std::stringify!($attr_name)) {
++                                                Some(Some(x)) => Some(x.eval(&values)?.0),
++                                                _ => None,
++                                            }
++                                        ),*];
++                                        let mut last = last_values.borrow_mut();
++                                        if last.as_ref() == Some(&key) {
++                                            return Ok(());
++                                        }
++                                        *last = Some(key);
++                                    }
++
+                                     // We first initialize all the local variables for all the expected attributes in scope
+                                     $(
+                                         // get the simplexprs from the attr_map
+--- a/crates/eww/src/widgets/build_widget.rs
++++ b/crates/eww/src/widgets/build_widget.rs
+@@ -235,6 +235,8 @@
+                 let created_children = Rc::new(RefCell::new(Vec::<gtk::Widget>::new()));
+                 let created_child_scopes = Rc::new(RefCell::new(Vec::<ScopeIndex>::new()));
+                 let gtk_container = gtk_container.clone();
++                // (sheels) rebuild the children only when the element list really changed
++                let last_elements = RefCell::new(None::<Vec<String>>);
+                 move |tree, values| {
+                     let elements_value = elements_expr
+                         .eval(&values)?
+@@ -244,6 +246,14 @@
+                         .iter()
+                         .map(DynVal::from)
+                         .collect_vec();
++                    {
++                        let key: Vec<String> = elements_value.iter().map(|e| e.0.clone()).collect();
++                        let mut last = last_elements.borrow_mut();
++                        if last.as_ref() == Some(&key) {
++                            return Ok(());
++                        }
++                        *last = Some(key);
++                    }
+                     let mut created_children = created_children.borrow_mut();
+                     for old_child in created_children.drain(..) {
+                         gtk_container.remove(&old_child);

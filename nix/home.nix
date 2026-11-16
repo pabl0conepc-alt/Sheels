@@ -14,7 +14,7 @@ in
     settings = lib.mkOption {
       type = lib.types.attrs;
       default = { };
-      example = { bar.workspacesShown = 7; services.weatherLocation = "Lisbon"; };
+      example = { bar.workspaces.shown = 7; services.weatherLocation = "Lisbon"; };
       description = "Written to ~/.config/sheels/shell.json (same keys as Caelestia's shell.json, camelCase).";
     };
 

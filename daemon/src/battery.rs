@@ -34,6 +34,8 @@ struct Inner {
     caps: bool,
     num: bool,
     leds: Vec<(PathBuf, bool)>, // path, is_caps
+    read_once: bool,
+    leds_once: bool,
 }
 
 #[derive(Default)]
@@ -170,6 +172,17 @@ impl Battery {
         s.secs_left = s.secs_left.map(|x| x / 60 * 60);
         let changed = s != i.snap;
         let was_charging = i.snap.charging || i.snap.on_ac;
+        if i.read_once && s.present && (s.charging || s.on_ac) != was_charging {
+            let plugged = s.charging || s.on_ac;
+            let t = crate::app::cfg().utilities.toasts.charging_changed;
+            app().notifs.toast(
+                t,
+                if plugged { "Charger plugged in" } else { "Charger unplugged" },
+                &format!("Battery at {:.0}%", s.pct),
+                if plugged { "power" } else { "power_off" },
+            );
+        }
+        i.read_once = true;
         i.snap = s.clone();
         if (s.charging || s.on_ac) && !was_charging {
             i.warned.clear();
@@ -189,6 +202,16 @@ impl Battery {
             }
         }
         let changed = caps != i.caps || num != i.num;
+        if i.leds_once {
+            let t = &crate::app::cfg().utilities.toasts;
+            if caps != i.caps {
+                app().notifs.toast(t.caps_lock_changed, if caps { "Caps lock on" } else { "Caps lock off" }, "", "keyboard_capslock_badge");
+            }
+            if num != i.num {
+                app().notifs.toast(t.num_lock_changed, if num { "Num lock on" } else { "Num lock off" }, "", "looks_one");
+            }
+        }
+        i.leds_once = true;
         i.caps = caps;
         i.num = num;
         changed

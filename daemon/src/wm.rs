@@ -198,7 +198,7 @@ impl Wm {
             self.refresh_bookmarks().await;
         }
 
-        let kb_changed = {
+        let (kb_changed, kb_switched) = {
             let mut i = self.inner.lock().unwrap();
             if i.active_bookmark != st.active_bookmark {
                 let seed = crate::util::now_ms() as usize ^ (i.shape.wrapping_mul(2654435761));
@@ -210,13 +210,18 @@ impl Wm {
             }
             i.active_bookmark = st.active_bookmark.clone();
             let changed = i.layout != st.layout || i.layout_short != st.layout_short;
+            // A real switch (not the first layout report at startup).
+            let switched = i.layout != st.layout && !i.layout.is_empty() && !st.layout.is_empty();
             i.layout = st.layout.clone();
             i.layout_short = st.layout_short.clone();
             i.last_state = Some(st.clone());
-            changed
+            (changed, switched)
         };
         if kb_changed {
             app.publish_status();
+        }
+        if kb_switched {
+            app.notifs.toast(crate::app::cfg().utilities.toasts.kb_layout_changed, "Keyboard layout changed", &st.layout, "keyboard");
         }
 
         // Outputs → UI (bar per monitor), fullscreen on the active output.
@@ -231,9 +236,21 @@ impl Wm {
         self.publish(&st, active_out.cloned());
     }
 
+    /// Re-render the `wm` topic from the last compositor state (config change).
+    pub fn republish(&self) {
+        let st = self.inner.lock().unwrap().last_state.clone();
+        if let Some(st) = st {
+            let out = st.outputs.iter().find(|o| o.active).or(st.outputs.first()).cloned();
+            self.publish(&st, out);
+        }
+    }
+
     fn publish(&self, st: &StateInfo, out: Option<OutInfo>) {
         let i = self.inner.lock().unwrap();
-        let shown = crate::app::cfg().bar.workspaces_shown.max(1);
+        let c = crate::app::cfg();
+        let wcfg = &c.bar.workspaces;
+        let shown = wcfg.shown.max(1);
+        let max_icons = if wcfg.show_windows { wcfg.max_window_icons } else { 0 };
         let (vw, vh) = out.as_ref().map(|o| (o.size[0] as f64, o.size[1] as f64)).unwrap_or((1920.0, 1080.0));
         let active = out.as_ref().and_then(|o| o.active_bookmark.clone()).or_else(|| st.active_bookmark.clone());
 
@@ -249,10 +266,14 @@ impl Wm {
                     let (hw, hh) = (w.size[0] as f64 / 2.0, w.size[1] as f64 / 2.0);
                     (wx - bx).abs() < vw / 2.0 + hw && (wy - by).abs() < vh / 2.0 + hh
                 })
-                .take(5)
+                .take(max_icons.max(1))
                 .map(|w| app().launcher.category_icon(&w.app_id).unwrap_or_else(|| app_category_icon(&w.app_id)))
                 .collect();
             let is_active = active.as_deref() == Some(name.as_str());
+            if !wcfg.show_unoccupied && !is_active && icons.is_empty() {
+                continue;
+            }
+            let icons: Vec<&str> = icons.into_iter().take(max_icons).collect();
             wss.push(json!({
                 "name": name,
                 "i": idx,
@@ -261,7 +282,11 @@ impl Wm {
                 "icons": icons,
             }));
         }
-        let active_idx = wss.iter().position(|w| w["active"] == true).map(|x| x as i64).unwrap_or(-1);
+        let active_idx = if wcfg.active_indicator {
+            wss.iter().position(|w| w["active"] == true).map(|x| x as i64).unwrap_or(-1)
+        } else {
+            -1
+        };
         // Indicator geometry (keep in sync with scss/_bar.scss): each slot is
         // a 32px shape area plus 20px per window icon (+4px padding), 4px apart.
         let slot_h = |w: &Value| -> i64 {
@@ -331,7 +356,7 @@ impl Wm {
             return Ok(String::new());
         }
         let idx = cur.and_then(|c| list.iter().position(|b| b.0 == c));
-        let n = list.len().min(crate::app::cfg().bar.workspaces_shown.max(1));
+        let n = list.len().min(crate::app::cfg().bar.workspaces.shown.max(1));
         let next = match (idx, dir) {
             (Some(i), "down" | "next") => (i + 1).min(n - 1),
             (Some(i), _) => i.saturating_sub(1),

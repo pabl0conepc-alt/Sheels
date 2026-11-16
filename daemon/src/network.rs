@@ -66,6 +66,7 @@ impl Network {
             "strength": s.strength,
             "icon": icon,
             "vpn": s.vpn,
+            "vpnActive": s.vpn.is_some(),
             "networks": i.networks,
             "scanning": i.scanning,
         })
@@ -80,7 +81,17 @@ impl Network {
         };
         if changed && on {
             self.kick.notify_one();
-            tokio::spawn(async { app().net.scan().await });
+            // Rescan every services.wifiRescanInterval seconds while a list is shown.
+            tokio::spawn(async {
+                loop {
+                    app().net.scan().await;
+                    let secs = crate::app::cfg().services.wifi_rescan_interval.clamp(5, 600);
+                    tokio::time::sleep(Duration::from_secs(secs)).await;
+                    if !app().net.inner.lock().unwrap().list_demand {
+                        break;
+                    }
+                }
+            });
         }
     }
 
@@ -149,6 +160,15 @@ impl Network {
         }
         let want_list = {
             let mut i = self.inner.lock().unwrap();
+            if i.snap.available && i.snap.vpn != snap.vpn {
+                let on = snap.vpn.is_some();
+                app().notifs.toast(
+                    crate::app::cfg().utilities.toasts.vpn_changed,
+                    if on { "VPN connected" } else { "VPN disconnected" },
+                    snap.vpn.as_deref().or(i.snap.vpn.as_deref()).unwrap_or(""),
+                    if on { "vpn_lock" } else { "vpn_key_off" },
+                );
+            }
             i.snap = snap;
             i.list_demand
         };

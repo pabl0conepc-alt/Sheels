@@ -127,9 +127,20 @@ impl Audio {
                 && old_src.as_ref().map(|d| (d.vol, d.muted)) != new_src.as_ref().map(|d| (d.vol, d.muted));
             let first = !i.initialised;
             i.initialised = true;
+            if !first {
+                let t = &crate::app::cfg().utilities.toasts;
+                let name = |d: &Option<Dev>| d.as_ref().map(|d| d.name.clone());
+                if name(&old_sink) != name(&new_sink) && let Some(d) = &new_sink {
+                    app().notifs.toast(t.audio_output_changed, "Audio output changed", &d.desc, "speaker");
+                }
+                if name(&old_src) != name(&new_src) && let Some(d) = &new_src {
+                    app().notifs.toast(t.audio_input_changed, "Audio input changed", &d.desc, "mic");
+                }
+            }
             (vol_changed || mic_changed, first)
         };
         app().publish_status();
+        app().nexus.on_audio().await;
         if changed_vol && !first {
             app().ui.osd().await;
         }

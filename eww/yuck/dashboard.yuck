@@ -28,13 +28,13 @@
   (box :orientation "v" :space-evenly false :class "dash-tabs"
     (eventbox :onscroll "sheels dash-tab-scroll {}"
       (box :orientation "h" :space-evenly true
-        (dash-tab :idx 0 :icon "dashboard" :label "Dashboard")
-        (dash-tab :idx 1 :icon "queue_music" :label "Media")
-        (dash-tab :idx 2 :icon "speed" :label "Performance")
-        (dash-tab :idx 3 :icon "cloud" :label "Weather")))
+        (box :visible {cfg.dashboard.showDashboard} (dash-tab :idx 0 :icon "dashboard" :label "Dashboard"))
+        (box :visible {cfg.dashboard.showMedia} (dash-tab :idx 1 :icon "queue_music" :label "Media"))
+        (box :visible {cfg.dashboard.showPerformance} (dash-tab :idx 2 :icon "speed" :label "Performance"))
+        (box :visible {cfg.dashboard.showWeather} (dash-tab :idx 3 :icon "cloud" :label "Weather"))))
     (box :class "dash-tab-track" :halign "fill"
       (box :class "dash-tab-indicator" :halign "start"
-           :style "margin-left: ${ui.dashTab * 210 + 61}px;"))))
+           :style "margin-left: ${ui.dashTabMargin ?: 61}px; min-width: ${ui.dashTabIndW ?: 88}px;"))))
 
 ; ---------------------------------------------------------------- dashboard tab
 (defwidget dash-main []
@@ -79,9 +79,12 @@
 (defwidget dash-datetime []
   (box :class "card datetime" :orientation "v" :space-evenly false :valign "fill"
     (box :vexpand true)
-    (label :class "dt-num" :text {formattime(EWW_TIME, "%H")})
+    (label :class "dt-num" :text {formattime(EWW_TIME, cfg.services.clockFormat == "12h" ? "%I" : "%H")})
     (label :class "dt-dots" :text "•••")
     (label :class "dt-num" :text {formattime(EWW_TIME, "%M")})
+    (label :class "dt-dots" :visible {cfg.dashboard.showClockSeconds} :text "•••")
+    (label :class "dt-num" :visible {cfg.dashboard.showClockSeconds}
+           :text {cfg.dashboard.showClockSeconds ? formattime(EWW_TIME, "%S") : ""})
     (box :vexpand true)))
 
 (defwidget dash-calendar []
@@ -184,18 +187,21 @@
 (defwidget dash-perf []
   (box :class "dash-perf" :orientation "v" :space-evenly false
     (box :orientation "h" :space-evenly false :class "dash-row"
-      (perf-hero :title "CPU" :icon "memory" :value {sys.cpu} :sub {sys.cpuName} :temp {sys.cpuTemp} :tempPct {sys.cpuTempPct} :cls "cpu")
-      (perf-hero :title "GPU" :icon "auto_awesome_motion" :value {sys.gpu ?: 0} :sub {sys.hasGpu ? sys.gpuName : "Not available"}
-                 :temp {sys.gpuTemp} :tempPct {sys.gpuTempPct} :cls "gpu"))
+      (box :visible {cfg.dashboard.performance.showCpu} (perf-hero :title "CPU" :icon "memory" :value {sys.cpu} :sub {sys.cpuName} :temp {sys.cpuTemp} :tempPct {sys.cpuTempPct} :cls "cpu"))
+      (box :visible {cfg.dashboard.performance.showGpu} (perf-hero :title "GPU" :icon "auto_awesome_motion" :value {sys.gpu ?: 0} :sub {sys.hasGpu ? sys.gpuName : "Not available"}
+                 :temp {sys.gpuTemp} :tempPct {sys.gpuTempPct} :cls "gpu")))
     (box :orientation "h" :space-evenly false :class "dash-row bottom"
       (box :class "card perf-mem" :orientation "v" :space-evenly false
-        (box :orientation "h" :space-evenly false
-          (icon :class "perf-card-icon" :name "memory_alt" :fill true)
-          (label :class "perf-title" :xalign 0 :hexpand true :text "Memory")
-          (label :class "perf-pct" :text "${sys.mem}%"))
-        (hbar :value {sys.mem} :class "mem")
-        (label :class "perf-sub" :xalign 0 :text "${sys.memUsed} / ${sys.memTotal}")
-        (box :class "perf-sep")
+           :visible {cfg.dashboard.performance.showMemory || cfg.dashboard.performance.showStorage}
+        (box :orientation "v" :space-evenly false :visible {cfg.dashboard.performance.showMemory}
+          (box :orientation "h" :space-evenly false
+            (icon :class "perf-card-icon" :name "memory_alt" :fill true)
+            (label :class "perf-title" :xalign 0 :hexpand true :text "Memory")
+            (label :class "perf-pct" :text "${sys.mem}%"))
+          (hbar :value {sys.mem} :class "mem")
+          (label :class "perf-sub" :xalign 0 :text "${sys.memUsed} / ${sys.memTotal}"))
+        (box :class "perf-sep" :visible {cfg.dashboard.performance.showMemory && cfg.dashboard.performance.showStorage})
+        (box :orientation "v" :space-evenly false :visible {cfg.dashboard.performance.showStorage}
         (box :orientation "h" :space-evenly false
           (icon :class "perf-card-icon" :name "hard_disk" :fill true)
           (label :class "perf-title" :xalign 0 :text "Storage"))
@@ -204,8 +210,8 @@
             (box :orientation "h" :space-evenly false
               (label :class "perf-sub" :xalign 0 :hexpand true :text {d.name})
               (label :class "perf-sub" :text "${d.used} / ${d.total}"))
-            (hbar :value {d.pct} :class "disk"))))
-      (box :class "card perf-net" :orientation "v" :space-evenly false :hexpand true
+            (hbar :value {d.pct} :class "disk")))))
+      (box :class "card perf-net" :orientation "v" :space-evenly false :hexpand true :visible {cfg.dashboard.performance.showNetwork}
         (box :orientation "h" :space-evenly false
           (icon :class "perf-card-icon" :name "swap_vert" :fill true)
           (label :class "perf-title" :xalign 0 :hexpand true :text "Network"))
@@ -224,7 +230,7 @@
             (box :orientation "v" :space-evenly false
               (label :class "perf-net-val" :xalign 0 :text {sys.up})
               (label :class "perf-sub" :xalign 0 :text "Total ${sys.totalUp}")))))
-      (box :class "card perf-bat" :orientation "v" :space-evenly false :visible {status.bat.present}
+      (box :class "card perf-bat" :orientation "v" :space-evenly false :visible {status.bat.present && cfg.dashboard.performance.showBattery}
         (icon :class "perf-bat-icon" :name {status.bat.icon} :fill true)
         (label :class "perf-bat-pct" :text "${status.bat.pct}%")
         (label :class "perf-sub" :text {status.bat.charging ? "Charging" : status.bat.onAc ? "Plugged in" : "Discharging"})

@@ -12,7 +12,7 @@
           (box :orientation "v" :space-evenly false
             (box :class "fillet lt" :halign "start")
             (box :class "panel left popout-panel" :orientation "v" :space-evenly false
-              (stack :selected {ui.popoutName == "network" ? 0 : ui.popoutName == "bluetooth" ? 1 : ui.popoutName == "battery" ? 2 : ui.popoutName == "audio" ? 3 : ui.popoutName == "lockstatus" ? 4 : 5}
+              (stack :selected {ui.popoutName == "network" ? 0 : ui.popoutName == "bluetooth" ? 1 : ui.popoutName == "battery" ? 2 : ui.popoutName == "audio" || ui.popoutName == "microphone" ? 3 : ui.popoutName == "lockstatus" || ui.popoutName == "kblayout" ? 4 : 5}
                      :transition "crossfade" :same-size false
                 (pop-network) (pop-bluetooth) (pop-battery) (pop-audio) (pop-lock) (pop-window)))
             (box :class "fillet lb" :halign "start")))))))
@@ -107,7 +107,8 @@ __SHEELS_EOF__"))
 (defwidget pop-lock []
   (box :class "pop" :orientation "v" :space-evenly false
     (label :class "pop-sub" :xalign 0 :text "Caps Lock: ${status.bat.caps ? 'on' : 'off'}")
-    (label :class "pop-sub" :xalign 0 :text "Num Lock: ${status.bat.num ? 'on' : 'off'}")))
+    (label :class "pop-sub" :xalign 0 :text "Num Lock: ${status.bat.num ? 'on' : 'off'}")
+    (label :class "pop-sub" :xalign 0 :visible {status.kb.layout != ""} :text "Layout: ${status.kb.layout}")))
 
 (defwidget pop-window []
   (box :class "pop pop-window" :orientation "v" :space-evenly false

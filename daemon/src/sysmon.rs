@@ -144,6 +144,7 @@ fn cpu_name() -> String {
 }
 
 fn storage() -> Value {
+    let bin = crate::app::cfg().services.data_units != "decimal";
     let mounts = std::fs::read_to_string("/proc/mounts").unwrap_or_default();
     let fs_ok = ["ext4", "ext3", "btrfs", "xfs", "f2fs", "zfs", "bcachefs", "ntfs3", "exfat", "vfat"];
     let mut seen_dev = std::collections::HashSet::new();
@@ -175,7 +176,7 @@ fn storage() -> Value {
         let used = total - free;
         out.push(json!({
             "mount": mnt, "name": if mnt == "/" { "Root".to_string() } else { mnt.rsplit('/').next().unwrap_or(&mnt).to_string() },
-            "used": human_bytes(used, true), "total": human_bytes(total, true), "pct": (used / total * 100.0).round() as i64,
+            "used": human_bytes(used, bin), "total": human_bytes(total, bin), "pct": (used / total * 100.0).round() as i64,
         }));
         if out.len() >= 4 {
             break;
@@ -190,6 +191,7 @@ impl SysMon {
     }
 
     async fn sample(&self) {
+        let bin = crate::app::cfg().services.data_units != "decimal";
         let (cpu_pct, cpu_temp, mem, net, gpu_kind, gpu_busy, gpu_temp) = {
             let mut i = self.inner.lock().unwrap();
             let cpu_pct = match (cpu_times(), i.last_cpu) {
@@ -268,14 +270,14 @@ impl SysMon {
             "gpuTemp": temp(gpu_temp),
             "gpuTempPct": (temp_frac(gpu_temp) * 100.0).round() as i64,
             "hasGpu": gpu_kind.is_some(),
-            "memUsed": human_bytes(mem.0 as f64, true),
-            "memTotal": human_bytes(mem.1 as f64, true),
+            "memUsed": human_bytes(mem.0 as f64, bin),
+            "memTotal": human_bytes(mem.1 as f64, bin),
             "mem": if mem.1 > 0 { (mem.0 as f64 / mem.1 as f64 * 100.0).round() as i64 } else { 0 },
             "storage": i.storage,
-            "down": format!("{}/s", human_bytes(net.0, true)),
-            "up": format!("{}/s", human_bytes(net.1, true)),
-            "totalDown": human_bytes(i.total_down as f64, true),
-            "totalUp": human_bytes(i.total_up as f64, true),
+            "down": format!("{}/s", human_bytes(net.0, bin)),
+            "up": format!("{}/s", human_bytes(net.1, bin)),
+            "totalDown": human_bytes(i.total_down as f64, bin),
+            "totalUp": human_bytes(i.total_up as f64, bin),
             "downHist": i.net_down_hist.iter().map(|x| (x / maxn * 100.0).round() as i64).collect::<Vec<_>>(),
             "upHist": i.net_up_hist.iter().map(|x| (x / maxn * 100.0).round() as i64).collect::<Vec<_>>(),
             "uptime": uptime(),

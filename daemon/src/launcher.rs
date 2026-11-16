@@ -134,6 +134,15 @@ fn clean_exec(exec: &str) -> String {
 }
 
 /// fzy-flavoured score; None = no match.
+/// `score` honouring `launcher.useFuzzy.*`: without fuzzy matching only
+/// substring matches count (Caelestia falls back to plain search).
+fn sc(q: &str, text: &str, fuzzy: bool) -> Option<i64> {
+    if !fuzzy && !q.is_empty() && !text.to_lowercase().contains(q) {
+        return None;
+    }
+    score(q, text)
+}
+
 pub fn score(q: &str, text: &str) -> Option<i64> {
     if q.is_empty() {
         return Some(0);
@@ -201,7 +210,7 @@ const ACTIONS: &[Action] = &[
     Action { name: "Logout", icon: "exit_to_app", desc: "Log out of the current session", cmd: "session logout", dangerous: true },
     Action { name: "Lock", icon: "lock", desc: "Lock the current session", cmd: "lock", dangerous: false },
     Action { name: "Sleep", icon: "bedtime", desc: "Suspend then hibernate", cmd: "session suspend", dangerous: false },
-    Action { name: "Settings", icon: "settings", desc: "Configure the shell", cmd: "open utilities", dangerous: false },
+    Action { name: "Settings", icon: "settings", desc: "Configure the shell", cmd: "nexus open", dangerous: false },
 ];
 
 impl Launcher {
@@ -273,13 +282,32 @@ impl Launcher {
                 }
             }
         }
-        let hidden = crate::app::cfg().launcher.hidden_apps.clone();
-        apps.retain(|a| !hidden.contains(&a.id));
+        // Hidden apps stay indexed (the Nexus lists them); `update` skips them.
         apps.sort_by_key(|a| a.name.to_lowercase());
         let mut i = self.inner.lock().unwrap();
         i.apps = apps;
         i.loaded = true;
         i.dir_mtimes = mtimes;
+    }
+
+    /// Re-run the current query after a config change.
+    pub fn refresh(&self) {
+        self.update();
+    }
+
+    /// Every indexed app for the Nexus "All apps" page.
+    pub fn apps_brief(&self) -> Vec<Value> {
+        self.maybe_reload();
+        let c = crate::app::cfg();
+        let i = self.inner.lock().unwrap();
+        i.apps
+            .iter()
+            .enumerate()
+            .map(|(k, a)| {
+                json!({"i": k, "id": a.id, "name": a.name, "icon": a.icon,
+                       "fav": c.launcher.favourite_apps.contains(&a.id), "hidden": c.launcher.hidden_apps.contains(&a.id)})
+            })
+            .collect()
     }
 
     /// Icon-theme name for a desktop id / app id (used by notifications).
@@ -348,6 +376,7 @@ impl Launcher {
             (self.inner.lock().unwrap().query.clone(), c.launcher.action_prefix.clone(), c.launcher.max_shown)
         };
         let dangerous_ok = crate::app::cfg().launcher.enable_dangerous_actions;
+        let fz = crate::app::cfg().launcher.use_fuzzy.clone();
         let mut items: Vec<Value> = vec![];
         let mut mode = "apps".to_string();
         let mut wallpapers: Vec<Value> = vec![];
@@ -370,7 +399,7 @@ impl Launcher {
                         .into_iter()
                         .filter_map(|(name, flavour)| {
                             let label = format!("{name} {flavour}");
-                            let s = score(&q, &label)?;
+                            let s = sc(&q, &label, fz.schemes)?;
                             let id = format!("{name} {flavour}");
                             let colours = crate::theme::scheme_preview(&name, &flavour);
                             Some((s, json!({"kind": "scheme", "name": name, "desc": flavour, "id": id, "matIcon": "palette",
@@ -385,7 +414,7 @@ impl Launcher {
                     let q = arg.to_lowercase();
                     let cur = app().theme.current_variant();
                     for (id, name, icon, desc) in crate::theme::VARIANTS {
-                        if score(&q, name).is_some() {
+                        if sc(&q, name, fz.variants).is_some() {
                             items.push(json!({"kind": "variant", "name": name, "desc": desc, "id": id, "matIcon": icon, "current": *id == cur}));
                         }
                     }
@@ -397,7 +426,7 @@ impl Launcher {
                     let cur = app().theme.current_wallpaper();
                     wallpapers = crate::theme::list_wallpapers()
                         .into_iter()
-                        .filter(|p| score(&q, &p.file_stem().map(|s| s.to_string_lossy().to_string()).unwrap_or_default()).is_some())
+                        .filter(|p| sc(&q, &p.file_stem().map(|s| s.to_string_lossy().to_string()).unwrap_or_default(), fz.wallpapers).is_some())
                         .take(max_w.max(1) * 4)
                         .map(|p| {
                             let ps = p.to_string_lossy().into_owned();
@@ -405,7 +434,7 @@ impl Launcher {
                                    "thumb": crate::theme::thumbnail_path(&p).to_string_lossy(), "current": ps == cur})
                         })
                         .collect();
-                    tokio::spawn(async { crate::theme::ensure_thumbnails().await });
+                    crate::theme::spawn_thumbnails();
                 }
                 _ => {
                     mode = "actions".into();
@@ -414,7 +443,7 @@ impl Launcher {
                         .iter()
                         .filter(|a| dangerous_ok || !a.dangerous)
                         .filter_map(|a| {
-                            let s = score(&q, a.name)?;
+                            let s = sc(&q, a.name, fz.actions)?;
                             Some((s, json!({"kind": "action", "name": a.name, "desc": a.desc, "matIcon": a.icon, "id": a.cmd})))
                         })
                         .collect();
@@ -428,17 +457,20 @@ impl Launcher {
             let q = query.trim().to_lowercase();
             let i = self.inner.lock().unwrap();
             let favs = crate::app::cfg().launcher.favourite_apps.clone();
+            let hidden = crate::app::cfg().launcher.hidden_apps.clone();
             let mut v: Vec<(i64, &Entry)> = i
                 .apps
                 .iter()
+                .filter(|a| !hidden.contains(&a.id))
                 .filter_map(|a| {
                     let s = if q.is_empty() {
                         0
                     } else {
-                        let s1 = score(&q, &a.name).map(|s| s + 300);
-                        let s2 = score(&q, &a.generic).map(|s| s / 2);
-                        let s3 = score(&q, &a.keywords).map(|s| s / 3);
-                        let s4 = score(&q, &a.id).map(|s| s / 3);
+                        let f = fz.apps;
+                        let s1 = sc(&q, &a.name, f).map(|s| s + 300);
+                        let s2 = sc(&q, &a.generic, f).map(|s| s / 2);
+                        let s3 = sc(&q, &a.keywords, f).map(|s| s / 3);
+                        let s4 = sc(&q, &a.id, f).map(|s| s / 3);
                         s1.max(s2).max(s3).max(s4)?
                     };
                     let fav = if favs.contains(&a.id) { 400 } else { 0 };
@@ -678,6 +710,9 @@ impl Launcher {
                     }
                     "Up" => -1,
                     "Down" => 1,
+                    // Ctrl+hjkl (launcher.vimKeybinds), reported by the patched EWW input.
+                    "C-k" | "C-h" if crate::app::cfg().launcher.vim_keybinds => -1,
+                    "C-j" | "C-l" if crate::app::cfg().launcher.vim_keybinds => 1,
                     "Page_Up" => -max,
                     "Page_Down" => max,
                     "Tab" | "ISO_Left_Tab" => {

@@ -385,6 +385,20 @@ pub fn thumbnail_path(p: &Path) -> PathBuf {
     cache_dir().join("thumbs").join(format!("{:016x}.jpg", crate::util::fnv1a(key.as_bytes())))
 }
 
+fn make_thumbnail(w: &Path, t: &Path) -> bool {
+    let Ok(r) = image::ImageReader::open(w).and_then(|r| r.with_guessed_format()) else { return false };
+    let Ok(img) = r.decode() else { return false };
+    let th = img.resize_to_fill(280 * 2, 200 * 2, image::imageops::FilterType::Triangle).to_rgb8();
+    let _ = std::fs::create_dir_all(t.parent().unwrap());
+    th.save(t).is_ok()
+}
+
+/// Spawn `ensure_thumbnails` (a sync boundary keeps async auto-trait
+/// inference from cycling through launcher → dispatch → nexus).
+pub fn spawn_thumbnails() {
+    tokio::spawn(ensure_thumbnails());
+}
+
 /// Generate missing launcher thumbnails, one at a time on a blocking thread.
 pub async fn ensure_thumbnails() {
     static RUNNING: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
@@ -398,13 +412,7 @@ pub async fn ensure_thumbnails() {
         if t.exists() {
             continue;
         }
-        let ok = tokio::task::spawn_blocking(move || -> bool {
-            let Ok(r) = image::ImageReader::open(&w).and_then(|r| r.with_guessed_format()) else { return false };
-            let Ok(img) = r.decode() else { return false };
-            let th = img.resize_to_fill(280 * 2, 200 * 2, image::imageops::FilterType::Triangle).to_rgb8();
-            let _ = std::fs::create_dir_all(t.parent().unwrap());
-            th.save(&t).is_ok()
-        })
+        let ok = tokio::task::spawn_blocking(move || make_thumbnail(&w, &t))
         .await
         .unwrap_or(false);
         made |= ok;
@@ -531,6 +539,16 @@ impl Theme {
         let logo_path = cache_dir().join("logo.svg");
         let _ = write_if_changed(&logo_path, &logo);
 
+        // Preview thumbnail of the current wallpaper (Nexus), made once.
+        if !st.wallpaper.is_empty() {
+            let w = PathBuf::from(&st.wallpaper);
+            let t = thumbnail_path(&w);
+            if !t.exists() {
+                let _ = tokio::task::spawn_blocking(move || make_thumbnail(&w, &t)).await;
+                crate::util::trim_heap();
+            }
+        }
+
         // 3. Topic for yuck expressions.
         let colours: serde_json::Map<String, Value> =
             st.colours.iter().map(|(k, v)| (k.clone(), Value::from(format!("#{v}")))).collect();
@@ -540,6 +558,10 @@ impl Theme {
                 "name": st.name, "flavour": st.flavour, "mode": st.mode, "variant": st.variant,
                 "light": st.mode == "light", "wallpaper": st.wallpaper, "c": colours,
                 "logo": logo_path.to_string_lossy(),
+                // Hash-named JPEG (safe inside CSS url()), used by the Nexus.
+                "thumb": if st.wallpaper.is_empty() { String::new() } else {
+                    thumbnail_path(std::path::Path::new(&st.wallpaper)).to_string_lossy().into_owned()
+                },
             }),
         );
 
@@ -822,12 +844,34 @@ async fn sync_driftwm(st: &SchemeState, path: &Path) {
 const BG_BEGIN: &str = "# >>> sheels wallpaper >>>";
 const BG_END: &str = "# <<< sheels wallpaper <<<";
 
+/// Escape a value for a TOML basic string.
+fn toml_escape(s: &str) -> String {
+    let mut o = String::with_capacity(s.len());
+    for c in s.chars() {
+        match c {
+            '\\' => o.push_str("\\\\"),
+            '"' => o.push_str("\\\""),
+            '\n' => o.push_str("\\n"),
+            '\r' => o.push_str("\\r"),
+            '\t' => o.push_str("\\t"),
+            c if (c as u32) < 0x20 || c == '\u{7f}' => o.push_str(&format!("\\u{:04X}", c as u32)),
+            c => o.push(c),
+        }
+    }
+    o
+}
+
 fn sync_background(cfg: &str, st: &SchemeState) -> String {
     let (Some(b), Some(e)) = (cfg.find(BG_BEGIN), cfg.find(BG_END)) else { return cfg.to_string() };
-    if st.wallpaper.is_empty() || e < b {
+    if e < b {
         return cfg.to_string();
     }
-    let block = format!("{BG_BEGIN}\ntype = \"wallpaper\"\npath = \"{}\"\n{BG_END}", st.wallpaper.replace('"', "\\\""));
+    // "Display wallpaper" off (or no wallpaper yet): driftwm's own dot grid.
+    let block = if st.wallpaper.is_empty() || !crate::app::cfg().background.enabled {
+        format!("{BG_BEGIN}\ntype = \"default\"\n{BG_END}")
+    } else {
+        format!("{BG_BEGIN}\ntype = \"wallpaper\"\npath = \"{}\"\n{BG_END}", toml_escape(&st.wallpaper))
+    };
     format!("{}{}{}", &cfg[..b], block, &cfg[e + BG_END.len()..])
 }
 
@@ -839,6 +883,12 @@ pub async fn toggle_gamemode() {
         m.gamemode
     };
     app().publish_status();
+    app().notifs.toast(
+        crate::app::cfg().utilities.toasts.game_mode_changed,
+        if on { "Game mode enabled" } else { "Game mode disabled" },
+        if on { "Animations and effects are off" } else { "Animations and effects are back" },
+        "gamepad",
+    );
     let path = state_dir().join("gamemode");
     if on {
         let _ = std::fs::write(&path, "1");

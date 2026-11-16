@@ -15,8 +15,8 @@ use tokio::sync::Notify;
 use crate::app::app;
 
 /// Panels that grab the screen (close on outside click, mutually exclusive).
-const MODAL: &[&str] = &["launcher", "session", "sidebar", "utilities"];
-const ALL: &[&str] = &["launcher", "dashboard", "session", "sidebar", "utilities", "popout", "osd"];
+const MODAL: &[&str] = &["launcher", "session", "sidebar", "utilities", "nexus"];
+const ALL: &[&str] = &["launcher", "dashboard", "session", "sidebar", "utilities", "popout", "osd", "nexus"];
 /// Revealer transition length used in the SCSS/yuck (keep in sync).
 const ANIM_MS: u64 = 400;
 
@@ -56,8 +56,14 @@ fn key(name: &str) -> Option<&'static str> {
 impl Ui {
     pub fn publish(&self) {
         let st = self.st.lock().unwrap();
+        // Tab indicator under the selected (visible) tab; the strip is 840px.
+        let vis = Self::dash_tabs_visible();
+        let pos = vis.iter().position(|t| *t == st.dash_tab).unwrap_or(0) as i64;
+        let tab_w = 840 / vis.len() as i64;
         let mut v = json!({
             "dashTab": st.dash_tab,
+            "dashTabMargin": pos * tab_w + (tab_w - 88) / 2,
+            "dashTabIndW": 88,
             "popoutName": st.popout,
             "popoutH": st.popout_geom.0,
             "popoutBottom": st.popout_geom.1,
@@ -66,6 +72,8 @@ impl Ui {
             "wifiAskPassword": "",
             "utilPage": "",
             "gamemode": false,
+            "barHover": false,
+            "winHover": false,
             "modal": MODAL.iter().any(|p| st.panels.get(p).map(|x| x.shown).unwrap_or(false)),
         });
         for p in ALL {
@@ -126,7 +134,31 @@ impl Ui {
         (w - bar - t, h - 2 * t)
     }
 
+    /// Dashboard tabs enabled in the config (Dashboard, Media, Performance, Weather).
+    fn dash_tabs_visible() -> Vec<u8> {
+        let c = crate::app::cfg();
+        let d = &c.dashboard;
+        let v: Vec<u8> = [d.show_dashboard, d.show_media, d.show_performance, d.show_weather]
+            .iter()
+            .enumerate()
+            .filter(|(_, on)| **on)
+            .map(|(i, _)| i as u8)
+            .collect();
+        if v.is_empty() { vec![0] } else { v }
+    }
+
+    /// Move to the next/previous enabled tab.
+    pub fn dash_tab_step(&self, dir: i32) {
+        let vis = Self::dash_tabs_visible();
+        let cur = self.st.lock().unwrap().dash_tab;
+        let pos = vis.iter().position(|t| *t == cur).unwrap_or(0) as i32;
+        let next = (pos + dir).clamp(0, vis.len() as i32 - 1) as usize;
+        self.set_dash_tab(vis[next]);
+    }
+
     pub fn set_dash_tab(&self, t: u8) {
+        let vis = Self::dash_tabs_visible();
+        let t = if vis.contains(&t) { t } else { *vis.iter().min_by_key(|v| (**v as i32 - t as i32).abs()).unwrap_or(&0) };
         self.st.lock().unwrap().dash_tab = t.min(3);
         self.publish();
         self.update_demand();
@@ -165,6 +197,10 @@ impl Ui {
         }
     }
 
+    pub fn is_fullscreen(&self) -> bool {
+        self.st.lock().unwrap().fullscreen
+    }
+
     pub async fn set_fullscreen(&self, fs: bool) {
         {
             let mut st = self.st.lock().unwrap();
@@ -198,11 +234,14 @@ impl Ui {
                 {
                     let id = format!("{w}-{i}");
                     let c = crate::app::cfg();
-                    let args = [
+                    let mut args = vec![
                         ("monitor", o.0.clone()),
                         ("thickness", c.border.thickness.to_string()),
                         ("rounding", c.border.rounding.to_string()),
                     ];
+                    if w == "bar" {
+                        args.push(("persistent", c.bar.persistent.to_string()));
+                    }
                     eww.open(w, &id, screen, &args).await;
                     opened.push(id);
                 }
@@ -264,13 +303,27 @@ impl Ui {
             "utilities" => "utilities",
             "popout" => "popout",
             "osd" => "osd",
+            "nexus" => "nexus",
             _ => "launcher",
         }
     }
 
     pub async fn show(&self, k: &'static str, via_hover: bool) {
-        if self.st.lock().unwrap().fullscreen && k != "osd" {
+        if self.st.lock().unwrap().fullscreen && k != "osd" && k != "nexus" {
             return;
+        }
+        {
+            let c = crate::app::cfg();
+            let enabled = match k {
+                "dashboard" => c.dashboard.enabled,
+                "launcher" => c.launcher.enabled,
+                "sidebar" => c.sidebar.enabled,
+                "utilities" => c.utilities.enabled,
+                _ => true,
+            };
+            if !enabled {
+                return;
+            }
         }
         if MODAL.contains(&k) {
             for other in MODAL {
@@ -302,9 +355,21 @@ impl Ui {
             match k {
                 "popout" | "sidebar" => args.push(("h", uh.to_string())),
                 "launcher" => args.push(("maxh", (uh * 7 / 10).to_string())),
+                "nexus" => {
+                    // Caelestia tokens: height = 0.7 × screen, ratio 16:9,
+                    // nav pane min(600, width / 3), content capped at 800.
+                    let full_h = self.active_height();
+                    let h = ((full_h as f64 * 0.7).round() as i32).max(500).min(uh);
+                    let w = ((h as f64 * 16.0 / 9.0).round() as i32).max(800).min(uw - 40);
+                    let nav = 600.min(w / 3);
+                    let content = (w - nav - 16 * 2 - 28 * 2).min(800);
+                    args.push(("w", w.to_string()));
+                    args.push(("h", h.to_string()));
+                    args.push(("navw", nav.to_string()));
+                    args.push(("cw", content.to_string()));
+                }
                 _ => {}
             }
-            let _ = uw;
             app().eww.open(Self::window_for(k), Self::window_for(k), screen.as_deref(), &args).await;
             self.st.lock().unwrap().panels.entry(k).or_default().mapped = true;
             // Let GTK map the window with the revealer collapsed first.
@@ -314,6 +379,9 @@ impl Ui {
         self.sync_catcher().await;
         self.publish();
         self.update_demand();
+        if k == "nexus" {
+            app().nexus.refresh().await;
+        }
     }
 
     pub async fn hide(&self, k: &'static str) {
@@ -330,6 +398,9 @@ impl Ui {
         self.publish();
         self.update_demand();
         self.sync_catcher().await;
+        if k == "nexus" {
+            app().net.set_list_demand(false);
+        }
         tokio::spawn(async move {
             tokio::time::sleep(Duration::from_millis(ANIM_MS + 50)).await;
             let ui = &app().ui;
@@ -398,9 +469,22 @@ impl Ui {
                 // Pointer on the OSD: keep it until the pointer leaves.
                 self.st.lock().unwrap().osd_gen += 1;
             }
+            "bar" => {
+                self.set_misc("barHover", Value::Bool(true));
+            }
             item if item.starts_with("popout:") => {
                 let name = item.trim_start_matches("popout:").to_string();
                 let _ = extra;
+                let c = crate::app::cfg();
+                if name == "activewindow" {
+                    self.set_misc("winHover", Value::Bool(true));
+                    if !c.bar.active_window.popout_on_hover {
+                        return;
+                    }
+                } else if !c.bar.status.popout_on_hover {
+                    return;
+                }
+                drop(c);
                 let geom = self.popout_geometry(&name);
                 {
                     let mut st = self.st.lock().unwrap();
@@ -446,7 +530,11 @@ impl Ui {
                 }
                 "popout" => {
                     app().net.set_list_demand(false);
+                    ui.set_misc("winHover", Value::Bool(false));
                     ui.hide("popout").await;
+                }
+                "bar" => {
+                    ui.set_misc("barHover", Value::Bool(false));
                 }
                 "osd" => {
                     ui.osd().await;

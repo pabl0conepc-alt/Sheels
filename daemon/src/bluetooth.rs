@@ -18,6 +18,8 @@ struct Inner {
     adapter: String,
     powered: bool,
     discovering: bool,
+    discoverable: bool,
+    pairable: bool,
     devices: Vec<Value>,
 }
 
@@ -59,6 +61,8 @@ impl Bluetooth {
             "available": i.available,
             "powered": i.powered,
             "discovering": i.discovering,
+            "discoverable": i.discoverable,
+            "pairable": i.pairable,
             "icon": icon,
             "connected": connected.len(),
             "devices": i.devices,
@@ -81,6 +85,8 @@ impl Bluetooth {
                         inner.adapter = path.clone();
                         inner.powered = a["Powered"].as_bool().unwrap_or(false);
                         inner.discovering = a["Discovering"].as_bool().unwrap_or(false);
+                        inner.discoverable = a["Discoverable"].as_bool().unwrap_or(false);
+                        inner.pairable = a["Pairable"].as_bool().unwrap_or(false);
                     }
                 if let Some(d) = ifaces.get("org.bluez.Device1") {
                     let name = s(&d["Alias"]);
@@ -91,6 +97,12 @@ impl Bluetooth {
                         continue;
                     }
                     let battery = ifaces.get("org.bluez.Battery1").and_then(|b| b["Percentage"].as_u64());
+                    let status = match (connected, battery) {
+                        (true, Some(b)) => format!("Connected · {b}%"),
+                        (true, None) => "Connected".to_string(),
+                        _ if paired => "Paired".to_string(),
+                        _ => "Available".to_string(),
+                    };
                     devs.push(json!({
                         "path": path,
                         "name": name,
@@ -100,6 +112,7 @@ impl Bluetooth {
                         "trusted": d["Trusted"].as_bool().unwrap_or(false),
                         "icon": device_icon(&s(&d["Icon"])),
                         "battery": battery,
+                        "status": status,
                     }));
                 }
             }
@@ -136,6 +149,13 @@ impl Bluetooth {
                     _ => !self.inner.lock().unwrap().powered,
                 };
                 crate::dbus::set(conn, BLUEZ, &adapter, "org.bluez.Adapter1", "Powered", zbus::Variant::from(on)).await?;
+            }
+            "discoverable" | "pairable" => {
+                let (prop, cur) = {
+                    let i = self.inner.lock().unwrap();
+                    if sub == "discoverable" { ("Discoverable", i.discoverable) } else { ("Pairable", i.pairable) }
+                };
+                crate::dbus::set(conn, BLUEZ, &adapter, "org.bluez.Adapter1", prop, zbus::Variant::from(!cur)).await?;
             }
             "scan" => {
                 let method = if self.inner.lock().unwrap().discovering { "StopDiscovery" } else { "StartDiscovery" };
@@ -181,7 +201,7 @@ impl Bluetooth {
                     app().bt.kick.notify_one();
                 });
             }
-            _ => bail!("bluetooth toggle|on|off|scan|connect|disconnect|pair|forget <addr>"),
+            _ => bail!("bluetooth toggle|on|off|scan|discoverable|pairable|connect|disconnect|pair|forget <addr>"),
         }
         self.kick.notify_one();
         Ok(String::new())

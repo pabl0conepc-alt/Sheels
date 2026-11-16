@@ -2,7 +2,7 @@
 
 **Recriação do [Caelestia Shell](https://github.com/caelestia-dots/shell) para o compositor [driftwm](https://github.com/malbiruk/driftwm)**, renderizada com [EWW](https://github.com/elkowar/eww) e movida por um daemon em **Rust**, empacotada para **NixOS** (flake + módulos NixOS e Home-Manager).
 
-O Caelestia original é feito em QML/Quickshell e só roda no Hyprland. O Sheels reproduz o visual e as funções dele (barra, moldura da tela, dashboard, launcher, notificações, OSD, sessão, sidebar, utilitários, popouts, lock, tema Material You gerado do wallpaper) sobre o driftwm, que é um compositor de canvas infinito, gastando muito menos memória.
+O Caelestia original é feito em QML/Quickshell e só roda no Hyprland. O Sheels reproduz o visual e as funções dele (barra, moldura da tela, dashboard, launcher, notificações, OSD, sessão, sidebar, utilitários, popouts, lock, o app de configurações **Nexus**, tema Material You gerado do wallpaper) sobre o driftwm, que é um compositor de canvas infinito, gastando muito menos memória.
 
 ![Desktop](docs/screenshots/desktop.jpg)
 
@@ -15,6 +15,8 @@ O Caelestia original é feito em QML/Quickshell e só roda no Hyprland. O Sheels
 | ![](docs/screenshots/lock.jpg) | ![](docs/screenshots/notification.jpg) |
 | **Popout da barra** | **Performance** |
 | ![](docs/screenshots/popout.jpg) | ![](docs/screenshots/dashboard-tab2.jpg) |
+| **Nexus (configurações)** | **Nexus → Taskbar** |
+| ![](docs/screenshots/nexus.jpg) | ![](docs/screenshots/nexus-taskbar.jpg) |
 
 > Todas as capturas acima vieram do Sheels rodando de verdade (driftwm aninhado, renderização por software). Elas foram comparadas lado a lado com o Caelestia v2.5 original nas mesmas condições.
 
@@ -106,7 +108,7 @@ O Caelestia desenha a moldura e os painéis como um único SDF ("blob"). No EWW/
               gtkTheme = true;      # apps GTK seguem o esquema de cores
               settings = {          # = ~/.config/sheels/shell.json
                 services.weatherLocation = "São Paulo";
-                bar.workspacesShown = 5;
+                bar.workspaces.shown = 5;
               };
             };
           };
@@ -152,7 +154,9 @@ No launcher: `>` abre as ações (`>calc`, `>scheme`, `>wallpaper`, `>variant`, 
 
 ```
 sheels daemon                      inicia o shell (backend + EWW)
-sheels toggle|open|close <painel>  launcher dashboard session sidebar utilities osd
+sheels toggle|open|close <painel>  launcher dashboard session sidebar utilities osd nexus
+sheels nexus open [página]         abre as configurações (ex.: sheels nexus open network)
+sheels config get|set <chave> [v]  ex.: sheels config set bar.clock.showDate true
 sheels volume up|down|mute|set N   sheels mic …   sheels brightness up|down|set N
 sheels media play-pause|next|previous|seek-to 50%|player next
 sheels notifs clear|dnd|test       sheels record fullscreen|region|sound|stop
@@ -167,23 +171,33 @@ O mesmo papel do `caelestia` CLI: o esquema `dynamic` gera Material You do wallp
 
 ## Configuração
 
-`~/.config/sheels/shell.json` usa as mesmas seções do Caelestia, e só é preciso escrever as chaves que forem mudar:
+O jeito mais fácil é o **Nexus** (ação `>settings` no launcher, o botão de engrenagem nos utilitários, ou `sheels nexus open`). Ele tem as mesmas páginas do Nexus do Caelestia: *Wallpaper & style*, *Network* (Wi-Fi, redes salvas, adicionar rede, VPN), *Connected devices* (Bluetooth, pareamento), *Audio* (saída/entrada e volume por app), *Panels* (Dashboard, Taskbar e seus componentes, Launcher, Sidebar, Utilities), *Apps* (apps padrão, favoritos e ocultos), *Services* (notificações, toasts, polling, incrementos), *Language & region* e *About*. Toda mudança vale na hora, sem reiniciar nada.
+
+Por baixo, tudo fica em `~/.config/sheels/shell.json`, nas mesmas seções do Caelestia, e só é preciso escrever as chaves que forem mudar:
 
 ```json
 {
-  "bar": { "workspacesShown": 5, "statusIcons": ["lockStatus", "network", "bluetooth", "battery"] },
+  "background": { "enabled": true },
+  "bar": {
+    "persistent": true,
+    "scrollActions": { "workspaces": true, "volume": true, "brightness": true },
+    "workspaces": { "shown": 5, "activeIndicator": true, "showWindows": true, "maxWindowIcons": 5 },
+    "activeWindow": { "compact": false, "showOnHover": true },
+    "status": { "icons": ["lockStatus", "network", "bluetooth", "battery"] },
+    "clock": { "showDate": false, "showSeconds": false }
+  },
   "border": { "thickness": 10, "rounding": 25 },
-  "launcher": { "maxShown": 7, "enableDangerousActions": false, "favouriteApps": ["firefox"] },
-  "notifs": { "defaultExpireTimeout": 5000 },
-  "osd": { "hideDelay": 2000, "enableMicrophone": false },
-  "dashboard": { "showOnHover": true, "resourceUpdateInterval": 1000 },
-  "services": { "weatherLocation": "", "weatherUnits": "auto", "audioIncrement": 0.1, "smartScheme": true, "gpuType": "auto" },
+  "dashboard": { "showOnHover": true, "showMedia": true, "performance": { "showGpu": true } },
+  "launcher": { "maxShown": 7, "vimKeybinds": false, "favouriteApps": ["firefox"] },
+  "notifs": { "defaultExpireTimeout": 5000, "fullscreen": "on", "groupPreviewNum": 3 },
+  "utilities": { "toggles": { "vpn": false }, "toasts": { "nowPlaying": false } },
+  "services": { "weatherLocation": "", "weatherUnits": "auto", "audioIncrement": 0.1, "smartScheme": true },
   "paths": { "wallpaperDir": "~/Pictures/Wallpapers", "face": "~/.face" },
   "appearance": { "transparency": false, "transparencyBase": 0.85 }
 }
 ```
 
-Para aplicar as mudanças, rode `sheels reload`. Esquemas próprios vão em `~/.config/sheels/schemes/<nome>/<sabor>/{dark,light}.txt`, e templates próprios em `~/.config/sheels/templates/`. Os templates aceitam a sintaxe `{{ $primary }}` do caelestia-cli e `{{ primary.hex }}`.
+Se o `shell.json` vier do Home Manager (link somente leitura para o `/nix/store`), o Nexus grava as mudanças em `~/.local/state/sheels/settings.json`, que é aplicado por cima. Assim o `home-manager switch` continua funcionando. Depois de editar o arquivo à mão, rode `sheels reload`. Esquemas próprios vão em `~/.config/sheels/schemes/<nome>/<sabor>/{dark,light}.txt`, e templates próprios em `~/.config/sheels/templates/`. Os templates aceitam a sintaxe `{{ $primary }}` do caelestia-cli e `{{ primary.hex }}`.
 
 ---
 
@@ -194,7 +208,8 @@ O objetivo foi chegar o mais perto possível do original. Abaixo estão as difer
 - **Workspaces viram bookmarks.** O driftwm não tem workspaces, é um canvas infinito. Os bookmarks do driftwm fazem esse papel: cada um é "ocupado" quando há janelas na área daquele ponto, e os ícones das janelas aparecem embaixo, como no Caelestia. Não existem *special workspaces*.
 - **A deformação elástica é aproximada.** O Caelestia deforma o blob com SDF + shader. No GTK3 os painéis deslizam da borda com junções côncavas e curvas *expressive*. O visual parado é o mesmo; a animação é próxima, mas não idêntica.
 - **A forma ativa não faz morph.** No Caelestia a forma M3 do workspace ativo se transforma de uma em outra. No Sheels ela troca (uma das 18 formas, sorteada) enquanto a pílula desliza.
-- **O Nexus (app de configurações em GUI) não foi recriado.** A ação "Settings" abre os utilitários, e a configuração é feita pelo `shell.json`. Lyrics, visualizador cava e sincronia do bongocat com o BPM também não existem.
+- **O Nexus foi recriado com as mesmas páginas.** *Updates*, *Plugins* e *Colours* mostram "Page under construction", exatamente como no Caelestia atual. Ficaram de fora só as opções de recursos que o Sheels não tem: backend de lyrics, barras do visualizador, *drag thresholds* (o Sheels abre painéis por hover/clique, não por arrasto), idioma da interface e *windows on special workspaces*. O Nexus abre centralizado sobre a tela; o modo "janela flutuante" (pip) do original não existe.
+- Lyrics, visualizador cava e sincronia do bongocat com o BPM não existem.
 - **O lock usa hyprlock.** Ele é renderizado por um template que reproduz o layout do lock do Caelestia: relógio condensado, cards de clima, fetch, mídia, recursos e notificações. A autenticação passa pelo PAM, e a impressão digital fica disponível via fprintd. O Howdy não é suportado.
 - **O login usa greetd + ReGreet** com CSS no estilo Caelestia. O Caelestia não tem um greeter próprio.
 

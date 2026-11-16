@@ -122,6 +122,24 @@ impl Media {
                            "len": 0, "pos": 0, "ts": 0, "art": ""}),
         };
         drop(i);
+        // utilities.toasts.nowPlaying: announce track changes while playing.
+        {
+            static LAST: Mutex<String> = Mutex::new(String::new());
+            let key = format!("{}\u{1f}{}", v["title"].as_str().unwrap_or(""), v["artist"].as_str().unwrap_or(""));
+            let mut last = LAST.lock().unwrap();
+            if v["available"] == true && v["playing"] == true && *last != key {
+                let first = last.is_empty();
+                *last = key;
+                if !first {
+                    app().notifs.toast(
+                        crate::app::cfg().utilities.toasts.now_playing,
+                        v["title"].as_str().unwrap_or(""),
+                        v["artist"].as_str().unwrap_or(""),
+                        "music_note",
+                    );
+                }
+            }
+        }
         app().hub.publish("media", &v);
     }
 

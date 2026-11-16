@@ -33,6 +33,7 @@ pub struct App {
     pub wm: crate::wm::Wm,
     pub info: crate::info::Info,
     pub rec: crate::recorder::Recorder,
+    pub nexus: crate::nexus::Nexus,
     pub misc: Mutex<Misc>,
     pub session_bus: OnceLock<zbus::Connection>,
     pub system_bus: OnceLock<zbus::Connection>,
@@ -68,6 +69,8 @@ impl App {
             "recordings": self.rec.list(),
         });
         drop(misc);
+        let mut v = v;
+        v["icons"] = serde_json::Value::from(self.status_icon_order());
         self.hub.publish("status", &v);
     }
 
@@ -82,7 +85,8 @@ impl App {
         let bat_present = self.bat.json()["present"].as_bool().unwrap_or(false);
         cfg()
             .bar
-            .status_icons
+            .status
+            .icons
             .iter()
             .filter(|i| match i.as_str() {
                 "lockStatus" => caps || num,
@@ -124,6 +128,7 @@ async fn async_main() -> anyhow::Result<()> {
         wm: Default::default(),
         info: Default::default(),
         rec: Default::default(),
+        nexus: Default::default(),
         misc: Mutex::new(Misc { dnd: false, idle_inhibit: false, gamemode: false, idle_inhibitor: None }),
         session_bus: OnceLock::new(),
         system_bus: OnceLock::new(),
@@ -155,6 +160,8 @@ async fn async_main() -> anyhow::Result<()> {
     app.theme.init().await;
     app.ui.publish();
     app.publish_status();
+    crate::settings::publish();
+    crate::nexus::publish();
 
     tokio::spawn(crate::server::serve(listener));
     tokio::spawn(crate::wm::run());

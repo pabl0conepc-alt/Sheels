@@ -7,7 +7,7 @@ use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 use tokio::sync::watch;
 
-pub const TOPICS: &[&str] = &["wm", "status", "media", "notifs", "sys", "launcher", "lset", "ui", "theme", "info"];
+pub const TOPICS: &[&str] = &["wm", "status", "media", "notifs", "sys", "launcher", "lset", "ui", "theme", "info", "cfg", "nexus", "npage"];
 
 #[derive(Clone)]
 pub struct Hub {

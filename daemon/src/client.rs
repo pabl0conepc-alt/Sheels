@@ -47,6 +47,12 @@ pub fn send(args: &[String]) -> i32 {
         let mut buf = String::new();
         let _ = std::io::stdin().read_to_string(&mut buf);
         args.push(buf.trim_end_matches('\n').to_string());
+    } else if args.len() > 2 && args.last().map(String::as_str) == Some("-") {
+        // Generic: a trailing `-` is replaced by stdin (heredocs from EWW).
+        let mut buf = String::new();
+        let _ = std::io::stdin().read_to_string(&mut buf);
+        args.pop();
+        args.push(buf.trim_end_matches('\n').to_string());
     }
     let Some(mut s) = connect() else {
         eprintln!("sheels: daemon not running (start it with `sheels daemon`)");

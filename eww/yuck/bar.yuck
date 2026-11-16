@@ -1,31 +1,41 @@
 ; Vertical bar (Caelestia modules/bar). Layout metrics are fixed so the
 ; daemon can centre popouts on hovered items (see ui.rs popout_geometry).
 
-(defwindow bar [monitor thickness rounding]
-  :geometry (geometry :width "${40 + 2 * (thickness < 8 ? 8 : thickness)}px" :height "100%" :anchor "center left")
+(defwindow bar [monitor thickness rounding persistent]
+  :geometry (geometry :width "${persistent ? 40 + 2 * (thickness < 8 ? 8 : thickness) : (thickness < 1 ? 1 : thickness)}px"
+                      :height "100%" :anchor "center left")
   :stacking "fg" :exclusive true :focusable "none" :namespace "sheels-bar"
-  (bar))
+  ; Non-persistent bar (bar.persistent = false): only the border strip stays;
+  ; the bar slides out while the pointer is on the edge (bar.showOnHover).
+  (eventbox :onhover {cfg.bar.persistent || !cfg.bar.showOnHover ? "" : "sheels hover bar"}
+            :onhoverlost {cfg.bar.persistent ? "" : "sheels unhover bar"}
+    (box :space-evenly false
+      (box :class "border-strip bar-strip" :visible {!(cfg.bar.persistent || (ui.barHover ?: false) || ui.popout)}
+           :style "min-width: ${thickness}px;")
+      (revealer :transition "slideright" :duration "300ms"
+                :reveal {cfg.bar.persistent || (ui.barHover ?: false) || ui.popout}
+        (bar)))))
 
 (defwidget bar []
   (centerbox :class "bar-root" :orientation "v"
     ; ---- top: logo + workspaces (scroll = volume, workspaces scroll = switch)
     (box :orientation "v" :space-evenly false :valign "fill" :vexpand true
-      (eventbox :onscroll "sheels volume {}" (box :class "bar-pad-top"))
-      (eventbox :onscroll "sheels volume {}"
+      (eventbox :onscroll {cfg.bar.scrollActions.volume ? "sheels volume {}" : ""} (box :class "bar-pad-top"))
+      (eventbox :onscroll {cfg.bar.scrollActions.volume ? "sheels volume {}" : ""}
         (button :class "bar-logo" :onclick "sheels toggle launcher" :tooltip "Launcher"
           (image :path {theme.logo} :image-width 26 :image-height 19)))
-      (eventbox :onscroll "sheels ws-scroll {}"
+      (eventbox :onscroll {cfg.bar.scrollActions.workspaces ? "sheels ws-scroll {}" : ""}
         (workspaces))
-      (eventbox :onscroll "sheels volume {}" :vexpand true (box)))
+      (eventbox :onscroll {cfg.bar.scrollActions.volume ? "sheels volume {}" : ""} :vexpand true (box)))
     ; ---- centre: active window (hover = window popout)
     (eventbox :onhover "sheels hover popout:activewindow" :onhoverlost "sheels unhover popout"
-              :onscroll "sheels volume {}"
+              :onscroll {cfg.bar.scrollActions.volume ? "sheels volume {}" : ""}
       (active-window))
     ; ---- bottom: tray, clock, status icons, power (scroll = brightness)
-    (eventbox :onscroll "sheels brightness {}" :valign "fill" :vexpand true
+    (eventbox :onscroll {cfg.bar.scrollActions.brightness ? "sheels brightness {}" : ""} :valign "fill" :vexpand true
       (box :orientation "v" :space-evenly false :valign "end" :class "bar-bottom"
-        (box :class "bar-tray" :halign "center"
-          (systray :orientation "v" :icon-size 18 :spacing 8 :prepend-new true))
+        (box :class "bar-tray ${cfg.bar.tray.background ? 'bg' : ''} ${cfg.bar.tray.compact ? 'compact' : ''}" :halign "center"
+          (systray :orientation "v" :icon-size {cfg.bar.tray.compact ? 16 : 18} :spacing {cfg.bar.tray.compact ? 4 : 8} :prepend-new true))
         (clock)
         (status-icons)
         (button :class "bar-power" :onclick "sheels toggle session" :tooltip "Session"
@@ -41,7 +51,7 @@
              :style "margin-top: ${wm.indTop ?: 0}px; min-height: ${wm.indH ?: 32}px;"))
       (box :orientation "v" :space-evenly false :class "ws-list"
         (for ws in {wm.workspaces}
-          (button :class "ws ${ws.active ? 'active' : ws.occupied ? 'occupied' : 'empty'}"
+          (button :class "ws ${ws.active ? 'active' : ws.occupied ? 'occupied' : 'empty'} ${cfg.bar.workspaces.occupiedBg && ws.occupied ? 'occ-bg' : ''}"
                   :onclick "sheels ws idx ${ws.i}" :tooltip "Bookmark ${ws.name}"
             (box :orientation "v" :space-evenly false
               (box :class "ws-shape-area" :halign "center" :valign "center"
@@ -55,35 +65,55 @@
                   (icon :class "ws-win" :name ic :fill true))))))))))
 
 ; ---------------------------------------------------------------- active window
+; bar.activeWindow: compact = icon only, inverted = title above the icon,
+; showOnHover = title only while hovered.
 (defwidget active-window []
   (box :class "bar-window" :orientation "v" :space-evenly false :halign "center" :valign "center"
-    (label :class "icon bar-window-icon" :text {wm.window.icon})
-    (label :class "bar-window-title" :angle 270 :limit-width 34 :show-truncated true
-           :text {wm.window.title})))
+    (label :class "icon bar-window-icon ${cfg.bar.activeWindow.inverted ? 'inv' : ''}"
+           :visible {!cfg.bar.activeWindow.inverted || cfg.bar.activeWindow.compact} :text {wm.window.icon})
+    (revealer :transition "slidedown" :duration "250ms"
+              :reveal {!cfg.bar.activeWindow.compact && (!cfg.bar.activeWindow.showOnHover || (ui.winHover ?: false))}
+      (label :class "bar-window-title" :angle 270 :limit-width 34 :show-truncated true
+             :text {wm.window.title}))
+    (label :class "icon bar-window-icon inv" :visible {cfg.bar.activeWindow.inverted && !cfg.bar.activeWindow.compact}
+           :text {wm.window.icon})))
 
 ; ---------------------------------------------------------------- clock
 (defwidget clock []
-  (button :class "bar-clock" :onclick "sheels toggle dashboard"
+  (button :class "bar-clock ${cfg.bar.clock.background ? 'bg' : ''}" :onclick "sheels toggle dashboard"
     (box :orientation "v" :space-evenly false :halign "center"
-      (label :class "icon bar-clock-icon" :text "calendar_month")
-      (label :class "bar-clock-text" :text {formattime(EWW_TIME, "%H")})
-      (label :class "bar-clock-text mins" :text {formattime(EWW_TIME, "%M")}))))
+      (label :class "icon bar-clock-icon" :visible {cfg.bar.clock.showIcon} :text "calendar_month")
+      (box :orientation "v" :space-evenly false :visible {cfg.bar.clock.showDate} :class "bar-date"
+        (label :class "bar-clock-text date" :text {formattime(EWW_TIME, "%d")})
+        (label :class "bar-clock-text date mins" :text {formattime(EWW_TIME, "%m")})
+        (box :class "bar-date-sep"))
+      (label :class "bar-clock-text" :text {formattime(EWW_TIME, cfg.services.clockFormat == "12h" ? "%I" : "%H")})
+      (label :class "bar-clock-text mins" :text {formattime(EWW_TIME, "%M")})
+      (label :class "bar-clock-text mins" :visible {cfg.bar.clock.showSeconds}
+             :text {cfg.bar.clock.showSeconds ? formattime(EWW_TIME, "%S") : ""}))))
 
 ; ---------------------------------------------------------------- status icons
+; Order and visibility follow bar.status.icons (editable in the Nexus).
 (defwidget status-icons []
   (box :class "status-pill" :orientation "v" :space-evenly false :halign "center"
-    (box :class "status-slot" :visible {status.bat.caps || status.bat.num} :orientation "v" :space-evenly false
-      (eventbox :onhover "sheels hover popout:lockstatus" :onhoverlost "sheels unhover popout"
-        (box :orientation "v" :space-evenly false
-          (box :visible {status.bat.caps} (icon :class "status-icon" :name "keyboard_capslock_badge" :fill true))
-          (box :visible {status.bat.num} (icon :class "status-icon" :name "looks_one" :fill true)))))
-    (eventbox :class "status-slot" :onhover "sheels hover popout:network" :onhoverlost "sheels unhover popout"
-              :onclick "sheels toggle utilities"
-      (label :class "icon status-icon" :text {status.net.icon}))
-    (eventbox :class "status-slot" :onhover "sheels hover popout:bluetooth" :onhoverlost "sheels unhover popout"
-              :onclick "sheels bluetooth toggle"
-      (icon :class "status-icon" :name {status.bt.icon} :fill {status.bt.connected > 0}))
-    (eventbox :class "status-slot" :visible {status.bat.present}
-              :onhover "sheels hover popout:battery" :onhoverlost "sheels unhover popout"
-      (icon :class "status-icon ${status.bat.pct <= 20 && !status.bat.charging ? 'low' : ''}"
-            :name {status.bat.icon} :fill true))))
+       :visible {arraylength(status.icons ?: []) > 0}
+    (for n in {status.icons ?: []}
+      (status-slot :n n))))
+
+(defwidget status-slot [n]
+  (eventbox :class "status-slot"
+            :onhover "sheels hover popout:${n}" :onhoverlost "sheels unhover popout"
+            :onclick {n == "network" ? "sheels toggle utilities" : n == "bluetooth" ? "sheels bluetooth toggle" : n == "audio" ? "sheels volume mute" : n == "microphone" ? "sheels mic mute" : ""}
+            :onscroll {n == "audio" ? "sheels volume {}" : n == "microphone" ? "sheels mic {}" : ""}
+    (box :orientation "v" :space-evenly false
+      (box :visible {n == "lockstatus"} :orientation "v" :space-evenly false
+        (box :visible {status.bat.caps} (icon :class "status-icon" :name "keyboard_capslock_badge" :fill true))
+        (box :visible {status.bat.num} (icon :class "status-icon" :name "looks_one" :fill true)))
+      (box :visible {n == "audio"} (icon :class "status-icon" :name {status.audio.icon} :fill true))
+      (box :visible {n == "microphone"} (icon :class "status-icon" :name {status.audio.micIcon} :fill true))
+      (box :visible {n == "kblayout"} (label :class "status-kb" :text {status.kb.short ?: "??"}))
+      (box :visible {n == "network"} (label :class "icon status-icon" :text {status.net.icon}))
+      (box :visible {n == "bluetooth"} (icon :class "status-icon" :name {status.bt.icon} :fill {status.bt.connected > 0}))
+      (box :visible {n == "battery"}
+        (icon :class "status-icon ${status.bat.pct <= 20 && !status.bat.charging ? 'low' : ''}"
+              :name {status.bat.icon} :fill true)))))

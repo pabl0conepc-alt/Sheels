@@ -124,10 +124,7 @@ pub async fn dispatch(a: Vec<String>) -> Result<String> {
             Ok(String::new())
         }
         "dash-tab-scroll" => {
-            let cur = app.hub.get("ui").and_then(|u| serde_json::from_str::<serde_json::Value>(&u).ok())
-                .and_then(|u| u["dashTab"].as_i64()).unwrap_or(0);
-            let next = if sub == "down" { cur + 1 } else { cur - 1 };
-            app.ui.set_dash_tab(next.clamp(0, 3) as u8);
+            app.ui.dash_tab_step(if sub == "down" { 1 } else { -1 });
             Ok(String::new())
         }
         "utilities-page" => {
@@ -157,6 +154,11 @@ pub async fn dispatch(a: Vec<String>) -> Result<String> {
         "wifi" => app.net.command(sub, &a[2.min(a.len())..]).await,
         "bluetooth" | "bt" => app.bt.command(sub, arg(&a, 2)).await,
         "launcher" => app.launcher.command(sub, &a[2.min(a.len())..]).await,
+        "config" => {
+            let rest: Vec<&str> = a.iter().skip(3).map(String::as_str).collect();
+            crate::settings::command(sub, arg(&a, 2), &rest).await
+        }
+        "nexus" | "settings" => app.nexus.command(if sub.is_empty() { "toggle" } else { sub }, &a[2.min(a.len())..]).await,
         "session" => {
             app.ui.close_all().await;
             session(sub).await
@@ -178,10 +180,18 @@ pub async fn dispatch(a: Vec<String>) -> Result<String> {
             Ok(String::new())
         }
         "dnd" => {
-            {
+            let on = {
                 let mut m = app.misc.lock().unwrap();
                 m.dnd = !m.dnd;
-            }
+                m.dnd
+            };
+            // Shown even with DND on (toasts are shell feedback, not notifications).
+            app.notifs.toast(
+                crate::app::cfg().utilities.toasts.dnd_changed,
+                if on { "Do not disturb enabled" } else { "Do not disturb disabled" },
+                if on { "Notifications are silenced" } else { "Notifications will pop up again" },
+                if on { "notifications_off" } else { "notifications_active" },
+            );
             app.publish_status();
             Ok(String::new())
         }
@@ -230,6 +240,9 @@ pub async fn dispatch(a: Vec<String>) -> Result<String> {
         "window" => app.wm.window_cmd(sub, arg(&a, 2)).await,
         "reload" => {
             *app.cfg.write().unwrap() = std::sync::Arc::new(crate::config::Config::load());
+            crate::settings::publish();
+            app.wm.republish();
+            app.publish_status();
             app.theme.apply_current().await;
             app.eww.reload().await;
             Ok(String::new())

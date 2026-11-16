@@ -112,3 +112,31 @@
   &:hover { background-color: rgba($onSurface, 0.08); }
   .icon { color: $error; font-size: 20px; font-weight: 700; }
 }
+
+// ---- configurable bits (Nexus → Panels → Taskbar)
+.ws.occ-bg { background-color: $container-high; }
+.bar-tray.bg {
+  background-color: $container;
+  border-radius: $full;
+  padding: $pad-sm 0;
+  min-width: 40px;
+}
+.bar-clock.bg {
+  background-color: $container;
+  min-width: 40px;
+  padding: $pad-sm 0;
+}
+.bar-date-sep {
+  min-height: 2px; min-width: 16px;
+  margin: 4px 12px;
+  border-radius: $full;
+  background-color: rgba($tertiary, 0.4);
+}
+.bar-clock-text.date { color: $secondary; }
+.bar-window-icon.inv { margin: $sp-sm 0 0 0; }
+.status-kb {
+  color: $secondary;
+  font-size: fs(10);
+  font-weight: 500;
+  min-height: 30px;
+}

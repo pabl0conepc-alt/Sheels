@@ -1,0 +1,288 @@
+// Nexus settings panel (Caelestia modules/nexus). Measurements taken from
+// the reference at 1080p: rows 62px (single line 54px), 2px apart, cards
+// 800px wide with extra-large outer and extra-small inner corners.
+
+$nx-row-bg: $container;
+$nx-row-r: 4px;
+
+.nexus-panel {
+  background-color: $bg;
+  border-radius: $rounding-xl;
+}
+.nx-root { padding: 0; }
+
+// ---------------------------------------------------------------- nav pane
+.nx-nav {
+  background-color: rgba($surfaceContainerLow, if($transparency, $t-layers, 1));
+  border-radius: $rounding-xl 0 0 $rounding-xl;
+  padding: $pad-lg;
+}
+.nx-search {
+  min-height: 56px;
+  border-radius: $full;
+  background-color: rgba($surfaceContainerLowest, if($transparency, $t-layers, 1));
+  border: 1px solid $outlineVariant;
+  padding: 0 $pad-lgi;
+  margin-bottom: $sp-lg;
+  .nx-search-icon { font-size: 22px; color: $onSurfaceVariant; margin-right: $sp-md; }
+}
+.nx-search-input, .nx-search-ph { font-size: fs(14); }
+.nx-search-ph { color: $onSurfaceVariant; }
+
+.nx-navlist { padding-bottom: $pad-lg; }
+.nx-navitem {
+  min-height: 74px;
+  margin-bottom: 4px;
+  padding: 0 $pad-lg;
+  border-radius: $rounding-xs;
+  @include state(rgba($surfaceContainerHigh, if($transparency, $t-layers, 1)), $onSurface);
+  transition: background-color $dur-sm $ease, border-radius $dur $ease;
+  &.first { border-top-left-radius: $rounding-xl; border-top-right-radius: $rounding-xl; }
+  &.last { border-bottom-left-radius: $rounding-xl; border-bottom-right-radius: $rounding-xl; margin-bottom: 16px; }
+  &.sel {
+    border-radius: $rounding-xli;
+    @include state($secondaryContainer, $onSecondaryContainer);
+    .nx-navicon { background-color: $primary; .icon { color: $onPrimary; } }
+    .nx-navlabel { color: $onSecondaryContainer; }
+  }
+}
+.nx-navicon {
+  min-width: 44px; min-height: 44px;
+  border-radius: $full;
+  margin-right: $sp-md;
+  background-color: $secondaryContainer;
+  .icon { font-size: 24px; color: $onSecondaryContainer; }
+}
+.nx-navlabel { font-size: fs(14); }
+.nx-navdesc { font-size: fs(11); color: $onSurfaceVariant; }
+
+// ---------------------------------------------------------------- page
+.nx-content { padding: $pad-xl $pad-xl 0 $pad-xl; }
+.nx-header { min-height: 40px; margin-bottom: $sp-lg; }
+.nx-title { font-size: fs(22); font-weight: 400; }
+.nx-back {
+  min-width: 40px; min-height: 40px;
+  border-radius: $full;
+  margin-right: $sp-lgi;
+  @include state($container-high, $onSurface);
+  .icon { font-size: 22px; color: $onSurfaceVariant; }
+}
+.nx-pagewrap { padding-bottom: $pad-xl; }
+.nx-page { padding-top: $pad-sm; }
+
+.nx-close-wrap { padding: $pad-sm; }
+.nx-close {
+  min-width: 32px; min-height: 32px;
+  border-radius: $rounding-md;
+  background-color: rgba($surfaceContainerLow, if($transparency, $t-layers, 1));
+  .icon { font-size: 18px; color: $onSurfaceVariant; transition: color $dur-sm $ease; }
+  &:hover .icon { color: $error; }
+}
+
+// ---------------------------------------------------------------- cards & rows
+.nx-head {
+  font-size: fs(13);
+  font-weight: 500;
+  margin: $sp-lg $sp-sm $sp-sm $sp-sm;
+}
+.nx-page > .nx-head:first-child { margin-top: 0; }
+.nx-card {
+  margin-bottom: $sp-sm;
+  > * { margin-bottom: 2px; }
+  > *:last-child { margin-bottom: 0; }
+  // Connected rows: large outer corners, small inner ones.
+  .nx-row { border-radius: $nx-row-r; }
+  > .nx-row:first-child, > *:first-child > .nx-row:first-child {
+    border-top-left-radius: $rounding-lgi; border-top-right-radius: $rounding-lgi;
+  }
+  > .nx-row:last-child, > *:last-child > .nx-row:last-child {
+    border-bottom-left-radius: $rounding-lgi; border-bottom-right-radius: $rounding-lgi;
+  }
+  // Rows inside list containers are separated like direct children.
+  > * > .nx-row { margin-bottom: 2px; }
+  > * > .nx-row:last-child { margin-bottom: 0; }
+  &.dim { opacity: 0.5; }
+}
+.nx-row {
+  min-height: 54px;
+  padding: 4px $pad-lgi;
+  background-color: $nx-row-bg;
+  transition: background-color $dur-sm $ease;
+}
+button.nx-row:hover { background-color: mix($onSurface, $surfaceContainer, 6%); }
+button.nx-row:active { background-color: mix($onSurface, $surfaceContainer, 10%); }
+.nx-row.active .nx-label { color: $primary; }
+.nx-row.off .nx-label { color: $onSurfaceVariant; }
+
+.nx-label { font-size: fs(13); }
+.nx-desc { font-size: fs(11); color: $onSurfaceVariant; }
+.nx-rowicon { font-size: 22px; color: $onSurfaceVariant; margin-right: $sp-lg; }
+.nx-chev { font-size: 22px; color: $onSurfaceVariant; margin-left: $sp-md; }
+.nx-infoval { font-size: fs(12); color: $onSurfaceVariant; }
+
+// M3 switch (52×32, thumb grows when on, check / cross icons)
+.nx-switch {
+  min-width: 52px; min-height: 30px;
+  border-radius: $full;
+  background-color: $surfaceContainerHighest;
+  border: 2px solid $outline;
+  margin-left: $sp-lg;
+  transition: background-color $dur-sm $ease, border-color $dur-sm $ease;
+  .nx-thumb {
+    min-width: 22px; min-height: 22px;
+    margin-left: 2px;
+    border-radius: $full;
+    background-color: $outline;
+    transition: margin-left $dur $ease-expr, background-color $dur-sm $ease;
+  }
+  .nx-thumb-icon { font-size: 15px; color: $surfaceContainerHighest; }
+  &.on {
+    background-color: $primary;
+    border-color: $primary;
+    .nx-thumb { margin-left: 24px; background-color: $onPrimary; }
+    .nx-thumb-icon { color: $primary; }
+  }
+}
+.nx-switchbtn { margin-right: $sp-sm; }
+
+// Stepper: [−][ value ][+]
+.nx-stepper { margin-left: $sp-lg; }
+.nx-step, .nx-stepval {
+  min-height: 36px;
+  background-color: $container-highest;
+}
+.nx-step {
+  min-width: 36px;
+  .icon { font-size: 18px; color: $onSurfaceVariant; }
+  transition: background-color $dur-sm $ease;
+  &:hover { background-color: mix($onSurface, $surfaceContainerHighest, 8%); }
+  &.dec { border-radius: $rounding-lgi $rounding-xs $rounding-xs $rounding-lgi; }
+  &.inc { border-radius: $rounding-xs $rounding-lgi $rounding-lgi $rounding-xs; }
+}
+.nx-stepval {
+  min-width: 64px;
+  margin: 0 2px;
+  border-radius: $rounding-xs;
+  font-size: fs(12);
+}
+
+// Select (split button)
+.nx-select { margin-left: $sp-lg; }
+.nx-select-main, .nx-select-chev {
+  min-height: 36px;
+  background-color: $secondaryContainer;
+}
+.nx-select-main {
+  padding: 0 $pad-md 0 $pad-md;
+  border-radius: $full $rounding-xs $rounding-xs $full;
+  margin-right: 2px;
+  .nx-select-icon { font-size: 16px; color: $onSecondaryContainer; margin-right: 6px; }
+  .nx-select-text { font-size: fs(12); color: $onSecondaryContainer; }
+}
+.nx-select-chev {
+  min-width: 32px;
+  border-radius: $rounding-xs $full $full $rounding-xs;
+  .icon { font-size: 20px; color: $onSecondaryContainer; }
+}
+
+// Text field
+.nx-entry {
+  min-width: 180px; min-height: 36px;
+  border-radius: $rounding-md;
+  border: 1px solid $outline;
+  padding: 0 $pad-md;
+  margin-left: $sp-lg;
+  &.wide { min-width: 300px; }
+}
+.nx-entry-input, .nx-entry-ph { font-size: fs(12); }
+.nx-entry-ph { color: $onSurfaceVariant; }
+
+.nx-iconbtn {
+  min-width: 36px; min-height: 36px;
+  border-radius: $full;
+  margin-left: 4px;
+  transition: background-color $dur-sm $ease;
+  .icon { font-size: 20px; color: $onSurfaceVariant; }
+  &:hover { background-color: rgba($onSurface, 0.08); }
+  &.on .icon { color: $primary; }
+  &.danger .icon { color: $error; }
+}
+.nx-mini { min-width: 22px; min-height: 16px; .icon { font-size: 16px; color: $onSurfaceVariant; } }
+.nx-reorder { margin-right: $sp-md; }
+
+.nx-btnrow .nx-label { color: $onSurface; }
+.nx-empty {
+  min-height: 92px;
+  padding: $pad-lg;
+  .nx-empty-icon { font-size: 28px; color: $onSurfaceVariant; }
+  .nx-empty-text { font-size: fs(13); color: $onSurfaceVariant; margin-top: 4px; }
+}
+
+.nx-placeholder {
+  min-height: 520px;
+  .nx-ph-icon { font-size: 44px; color: $onSurfaceVariant; opacity: 0.6; }
+  .nx-ph-title { font-size: fs(16); color: $onSurfaceVariant; margin-top: $sp-sm; opacity: 0.8; }
+  .nx-ph-desc { font-size: fs(12); color: $onSurfaceVariant; opacity: 0.6; }
+}
+
+// Sliders (audio)
+.nx-volrow { min-height: 62px; }
+scale.nx-slider {
+  margin-top: 4px;
+  trough { min-height: 16px; border-radius: $rounding-xs; background-color: $secondaryContainer; }
+  highlight { min-height: 16px; border-radius: $rounding-xs; background-color: $primary; }
+  slider { min-width: 4px; min-height: 28px; margin: -6px 0; border-radius: $full; background-color: $primary; }
+}
+
+// ---------------------------------------------------------------- wallpaper & style
+.nx-wallwrap { margin-bottom: $sp-md; }
+.nx-hero {
+  min-width: 568px; min-height: 320px;
+  border-radius: $rounding-xl;
+  background-size: cover;
+  background-position: center;
+  background-color: $container;
+  &.wide { min-width: 800px; min-height: 240px; border-radius: $rounding-xl; }
+}
+.nx-hero-btns {
+  margin: $sp-md 0 $sp-md 0;
+  &.top { margin-top: 0; }
+}
+.nx-tonal {
+  min-height: 54px;
+  padding: 0 $pad-xl;
+  margin: 0 4px;
+  border-radius: $full;
+  @include state($secondaryContainer, $onSecondaryContainer);
+  .icon { font-size: 22px; color: $onSecondaryContainer; margin-right: $sp-sm; }
+  label { font-size: fs(14); color: $onSecondaryContainer; }
+  &.primary {
+    @include state($primary, $onPrimary);
+    .icon, label { color: $onPrimary; }
+  }
+}
+.nx-caption { font-size: fs(10); color: $onSurfaceVariant; margin: 4px 0 $sp-md 0; }
+.nx-wallrow { margin-bottom: $sp-sm; }
+.nx-wallitem {
+  margin-right: $sp-sm;
+  border-radius: $rounding-lg;
+  border: 3px solid transparent;
+  &.current { border-color: $primary; }
+  &:hover { border-color: rgba($primary, 0.5); }
+}
+.nx-wallthumb {
+  min-width: 254px; min-height: 160px;
+  border-radius: $rounding-md;
+  background-size: cover;
+  background-position: center;
+}
+
+.nx-formbtns { margin-top: $sp-sm; .nx-desc { margin-right: $sp-md; } }
+
+// ---------------------------------------------------------------- apps / about
+.nx-appicon { margin-right: $sp-lg; }
+.nx-about { padding: $pad-xl; background-color: $nx-row-bg; border-radius: $rounding-lgi; margin-bottom: $sp-md; }
+.nx-about-logo { margin-bottom: $sp-sm; }
+.nx-about-name { font-size: fs(26); font-weight: 400; }
+.nx-about-ver { font-size: fs(12); color: $onSurfaceVariant; }
+.nx-about-sub { margin-top: $sp-sm; }
