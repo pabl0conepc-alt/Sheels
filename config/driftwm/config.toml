@@ -1,0 +1,163 @@
+# driftwm config for Sheels (Caelestia-style shell on driftwm).
+# Keybindings follow Caelestia's dots (hypr/variables.lua) wherever driftwm has
+# an equivalent. driftwm "bookmarks" play the role of Hyprland workspaces.
+#
+# The two "sheels" blocks are rewritten by `sheels` on every theme/wallpaper
+# change (colours + wallpaper). Edit anything outside them freely.
+
+mod_key = "super"
+focus_follows_mouse = false
+window_placement = "auto"
+
+# The shell itself (bar, panels, notifications, OSD…) + idle/lock + clipboard.
+autostart = [
+  "sheels daemon",
+  "swayidle -w timeout 300 'sheels lock' timeout 600 'driftwm msg action power-off-monitors 2>/dev/null' before-sleep 'sheels lock'",
+  "wl-paste --watch cliphist store",
+]
+
+[session]
+restore_windows = true
+restore_camera = true
+
+[env]
+QT_WAYLAND_DISABLE_WINDOWDECORATION = "1"
+QT_QPA_PLATFORMTHEME = "gtk3"
+XCURSOR_SIZE = "24"
+
+[input.keyboard]
+layout = "us"
+repeat_rate = 25
+repeat_delay = 250
+num_lock = true
+
+[input.trackpad]
+tap_to_click = true
+natural_scroll = true
+
+[navigation]
+drift = 0.5
+camera_speed = 0.3
+
+[navigation.bookmarks]
+# Caelestia shows 5 workspaces; these are 5 canvas spots.
+"1" = [0, 0]
+"2" = [3000, 0]
+"3" = [6000, 0]
+"4" = [9000, 0]
+"5" = [12000, 0]
+
+[snap]
+gap = 10.0          # Caelestia gaps (hyprland general:gaps_in*2)
+outer_gap = 20.0
+
+[decorations]
+default_mode = "minimal"
+corner_radius = 10
+shadow = true
+border_width = 2
+title_bar_height = 25
+font = "Rubik"
+# >>> sheels managed (do not edit inside) >>>
+bg_color = "#261d20"
+fg_color = "#efdfe2"
+border_color = "#514347"
+border_color_focused = "#ffb0ca"
+# <<< sheels managed <<<
+
+[effects]
+blur_radius = 3
+blur_strength = 2.0
+animation_speed = 0.35
+animation_scale = 0.9
+
+[background]
+# >>> sheels wallpaper >>>
+type = "default"
+# <<< sheels wallpaper <<<
+
+[keybindings]
+# ---- shell (Caelestia: kbLauncher / kbSession / kbShowSidebar / kbClearNotifs / kbLock)
+"super" = "spawn sheels toggle launcher"            # tap Super
+"mod+space" = "spawn sheels toggle launcher"
+"ctrl+alt+delete" = "spawn sheels toggle session"
+"mod+n" = "spawn sheels toggle sidebar"
+"mod+k" = "spawn sheels toggle dashboard"
+"mod+u" = "spawn sheels toggle utilities"
+"ctrl+alt+c" = "spawn sheels notifs clear"
+"mod+l" = "spawn sheels lock"
+"ctrl+mod+shift+r" = "spawn sheels quit"
+"ctrl+mod+alt+r" = "spawn sh -c 'sheels quit; sleep 0.5; sheels daemon'"
+
+# ---- bookmarks = workspaces (Super+1…5 go, Super+Alt+1…5 move window)
+"mod+1" = "go-to-bookmark 1"
+"mod+2" = "go-to-bookmark 2"
+"mod+3" = "go-to-bookmark 3"
+"mod+4" = "go-to-bookmark 4"
+"mod+5" = "go-to-bookmark 5"
+"mod+alt+1" = "move-to-bookmark 1"
+"mod+alt+2" = "move-to-bookmark 2"
+"mod+alt+3" = "move-to-bookmark 3"
+"mod+alt+4" = "move-to-bookmark 4"
+"mod+alt+5" = "move-to-bookmark 5"
+"mod+shift+1" = "set-bookmark 1"
+"mod+shift+2" = "set-bookmark 2"
+"mod+shift+3" = "set-bookmark 3"
+"mod+shift+4" = "set-bookmark 4"
+"mod+shift+5" = "set-bookmark 5"
+"mod+page_down" = "spawn sheels ws-scroll down"
+"mod+page_up" = "spawn sheels ws-scroll up"
+"ctrl+mod+right" = "spawn sheels ws-scroll down"
+"ctrl+mod+left" = "spawn sheels ws-scroll up"
+
+# ---- windows
+"mod+q" = "close-window"
+"mod+f" = "toggle-fullscreen"
+"mod+alt+f" = "fit-window-snapped"
+"mod+p" = "toggle-pin-to-screen"
+"ctrl+mod+backslash" = "center-window"
+"mod+w" = "exec firefox"
+"mod+o" = "zoom-to-fit"                               # overview
+"mod+a" = "home-toggle"
+"alt+tab" = "cycle-windows forward"
+"alt+shift+tab" = "cycle-windows backward"
+
+# ---- apps (Caelestia: kbTerminal / kbBrowser / kbEditor / kbFileExplorer / kbAudioSettings)
+"mod+t" = "exec foot"
+"mod+return" = "exec foot"
+"mod+c" = "exec codium"
+"mod+e" = "exec thunar"
+"ctrl+alt+v" = "exec pwvucontrol"
+"ctrl+shift+escape" = "exec foot -e btop"
+
+# ---- utilities
+"Print" = "spawn sheels screenshot full"
+"mod+shift+s" = "spawn sheels screenshot region"
+"mod+shift+alt+s" = "spawn sheels screenshot region"
+"mod+shift+c" = "spawn hyprpicker -a"
+"mod+v" = "spawn sh -c 'cliphist list | fuzzel --dmenu --config ~/.local/state/sheels/theme/fuzzel.ini | cliphist decode | wl-copy'"
+"mod+period" = "spawn sheels-emoji"
+"ctrl+alt+r" = "spawn sheels-record"
+"mod+alt+r" = "spawn sheels-record --sound"
+"mod+shift+alt+r" = "spawn sheels-record --region"
+
+# ---- media / volume / brightness (OSD is shown by the shell)
+"XF86AudioRaiseVolume" = "spawn sheels volume up"
+"XF86AudioLowerVolume" = "spawn sheels volume down"
+"XF86AudioMute" = "spawn sheels volume mute"
+"XF86AudioMicMute" = "spawn sheels mic mute"
+"mod+shift+m" = "spawn sheels volume mute"
+"XF86MonBrightnessUp" = "spawn sheels brightness up"
+"XF86MonBrightnessDown" = "spawn sheels brightness down"
+"XF86AudioPlay" = "spawn sheels media play-pause"
+"XF86AudioPause" = "spawn sheels media play-pause"
+"XF86AudioNext" = "spawn sheels media next"
+"XF86AudioPrev" = "spawn sheels media previous"
+"XF86AudioStop" = "spawn sheels media stop"
+"ctrl+mod+space" = "spawn sheels media play-pause"
+"ctrl+mod+equal" = "spawn sheels media next"
+"ctrl+mod+minus" = "spawn sheels media previous"
+"ctrl+mod+backspace" = "spawn sheels media stop"
+
+# The shell draws its own bar/launcher: driftwm's own launcher binding off.
+"mod+d" = "none"

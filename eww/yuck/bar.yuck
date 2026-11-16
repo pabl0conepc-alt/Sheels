@@ -1,0 +1,89 @@
+; Vertical bar (Caelestia modules/bar). Layout metrics are fixed so the
+; daemon can centre popouts on hovered items (see ui.rs popout_geometry).
+
+(defwindow bar [monitor thickness rounding]
+  :geometry (geometry :width "${40 + 2 * (thickness < 8 ? 8 : thickness)}px" :height "100%" :anchor "center left")
+  :stacking "fg" :exclusive true :focusable "none" :namespace "sheels-bar"
+  (bar))
+
+(defwidget bar []
+  (centerbox :class "bar" :orientation "v"
+    ; ---- top: logo + workspaces (scroll = volume, workspaces scroll = switch)
+    (box :orientation "v" :space-evenly false :valign "fill" :vexpand true
+      (eventbox :onscroll "sheels volume {}" :class "bar-pad-top")
+      (eventbox :onscroll "sheels volume {}"
+        (button :class "bar-logo" :onclick "sheels toggle launcher" :tooltip "Launcher"
+          (image :path {theme.logo} :image-width 26 :image-height 19)))
+      (eventbox :onscroll "sheels ws-scroll {}"
+        (workspaces))
+      (eventbox :onscroll "sheels volume {}" :vexpand true (box)))
+    ; ---- centre: active window (hover = window popout)
+    (eventbox :onhover "sheels hover popout:activewindow" :onhoverlost "sheels unhover popout"
+              :onscroll "sheels volume {}"
+      (active-window))
+    ; ---- bottom: tray, clock, status icons, power (scroll = brightness)
+    (eventbox :onscroll "sheels brightness {}" :valign "fill" :vexpand true
+      (box :orientation "v" :space-evenly false :valign "end" :class "bar-bottom"
+        (box :class "bar-tray" :halign "center"
+          (systray :orientation "v" :icon-size 18 :spacing 8 :prepend-new true))
+        (clock)
+        (status-icons)
+        (button :class "bar-power" :onclick "sheels toggle session" :tooltip "Session"
+          (label :class "icon" :text "power_settings_new"))))))
+
+; ---------------------------------------------------------------- workspaces
+(defwidget workspaces []
+  (box :class "ws-pill" :orientation "v" :space-evenly false :halign "center"
+    (overlay
+      ; Sliding active indicator (primary pill) behind the shapes.
+      (box :valign "start" :halign "fill"
+        (box :class "ws-indicator ${wm.activeIdx < 0 ? 'hidden' : ''}"
+             :style "margin-top: ${wm.indTop ?: 0}px; min-height: ${wm.indH ?: 32}px;"))
+      (box :orientation "v" :space-evenly false :class "ws-list"
+        (for ws in {wm.workspaces}
+          (button :class "ws ${ws.active ? 'active' : ws.occupied ? 'occupied' : 'empty'}"
+                  :onclick "sheels ws ${ws.name}" :tooltip "Bookmark ${ws.name}"
+            (box :orientation "v" :space-evenly false
+              (box :class "ws-shape-area" :halign "center" :valign "center"
+                (image :visible {ws.active}
+                       :path "${assets}/shapes/${wm.shape}.svg"
+                       :fill-svg {theme.c.onPrimary ?: '#ffffff'}
+                       :image-width 21 :image-height 21)
+                (box :visible {!ws.active} :class "ws-dot" :halign "center" :valign "center"))
+              (box :orientation "v" :space-evenly false :class "ws-icons" :visible {arraylength(ws.icons) > 0}
+                (for ic in {ws.icons}
+                  (icon :class "ws-win" :name ic :fill true))))))))))
+
+; ---------------------------------------------------------------- active window
+(defwidget active-window []
+  (box :class "bar-window" :orientation "v" :space-evenly false :halign "center" :valign "center"
+    (label :class "icon bar-window-icon" :text {wm.window.icon})
+    (label :class "bar-window-title" :angle 270 :limit-width 34 :show-truncated true
+           :text {wm.window.title})))
+
+; ---------------------------------------------------------------- clock
+(defwidget clock []
+  (button :class "bar-clock" :onclick "sheels toggle dashboard"
+    (box :orientation "v" :space-evenly false :halign "center"
+      (label :class "icon bar-clock-icon" :text "calendar_month")
+      (label :class "bar-clock-text" :text {formattime(EWW_TIME, "%H")})
+      (label :class "bar-clock-text mins" :text {formattime(EWW_TIME, "%M")}))))
+
+; ---------------------------------------------------------------- status icons
+(defwidget status-icons []
+  (box :class "status-pill" :orientation "v" :space-evenly false :halign "center"
+    (box :class "status-slot" :visible {status.bat.caps || status.bat.num} :orientation "v" :space-evenly false
+      (eventbox :onhover "sheels hover popout:lockstatus" :onhoverlost "sheels unhover popout"
+        (box :orientation "v" :space-evenly false
+          (box :visible {status.bat.caps} (icon :class "status-icon" :name "keyboard_capslock_badge" :fill true))
+          (box :visible {status.bat.num} (icon :class "status-icon" :name "looks_one" :fill true)))))
+    (eventbox :class "status-slot" :onhover "sheels hover popout:network" :onhoverlost "sheels unhover popout"
+              :onclick "sheels toggle utilities"
+      (label :class "icon status-icon" :text {status.net.icon}))
+    (eventbox :class "status-slot" :onhover "sheels hover popout:bluetooth" :onhoverlost "sheels unhover popout"
+              :onclick "sheels bluetooth toggle"
+      (icon :class "status-icon" :name {status.bt.icon} :fill {status.bt.connected > 0}))
+    (eventbox :class "status-slot" :visible {status.bat.present}
+              :onhover "sheels hover popout:battery" :onhoverlost "sheels unhover popout"
+      (icon :class "status-icon ${status.bat.pct <= 20 && !status.bat.charging ? 'low' : ''}"
+            :name {status.bat.icon} :fill true))))

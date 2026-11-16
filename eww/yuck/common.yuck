@@ -1,0 +1,29 @@
+; Small building blocks shared by every module.
+
+; Material Symbols Rounded icon (ligature text).
+; Filled icons use the font's FILL axis through a Pango font variation
+; (GTK3 CSS has no font-variation-settings).
+(defwidget icon [name ?class ?fill ?tooltip]
+  (label :class "icon ${class ?: ''}"
+         :markup "<span font_desc='Material Symbols Rounded @FILL=${fill == true ? 1 : 0},GRAD=${theme.light ? 0 : -25}'>${name}</span>"
+         :tooltip tooltip))
+
+; Icon button (Caelestia IconButton: Text / Tonal / Filled types).
+(defwidget icon-btn [icon onclick ?class ?active ?fill ?tooltip ?onrightclick]
+  (button :class "icon-btn ${class ?: ''} ${active == true ? 'active' : ''}"
+          :onclick onclick
+          :onrightclick {onrightclick ?: ''}
+          :tooltip tooltip
+          (icon :name icon :fill {fill == true || active == true})))
+
+; Circular progress with a centred icon (dashboard resources).
+(defwidget ring [value icon ?class ?size]
+  (overlay :class "ring ${class ?: ''}"
+    (circular-progress :class "ring-track" :value 100 :thickness 6 :start-at 75)
+    (circular-progress :class "ring-fill" :value value :thickness 6 :start-at 75 :clockwise true)
+    (icon :class "ring-icon" :name icon :fill true)))
+
+; Horizontal labelled progress bar.
+(defwidget hbar [value ?class]
+  (box :class "hbar ${class ?: ''}" :hexpand true
+    (progress :value value :orientation "h" :hexpand true)))

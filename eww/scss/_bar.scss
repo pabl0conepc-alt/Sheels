@@ -1,0 +1,114 @@
+// Bar — metrics are mirrored in daemon/src/ui.rs (popout_geometry) and
+// daemon/src/wm.rs (workspace indicator); keep them in sync.
+.bar {
+  background-color: $bg;
+  min-width: 40px + 2 * $border-thickness;
+}
+.bar-pad-top { min-height: $pad-lg; }
+
+.bar-logo {
+  margin-bottom: $sp-md;
+  padding: 2px;
+  border-radius: $full;
+  transition: background-color $dur-sm $ease;
+  &:hover { background-color: rgba($onSurface, 0.08); }
+}
+
+// ---- workspaces
+.ws-pill {
+  background-color: $container;
+  border-radius: $full;
+  min-width: 40px;
+  padding: 4px;
+}
+.ws-list { }
+.ws-indicator {
+  background-color: $primary;
+  border-radius: $full;
+  min-width: 32px;
+  transition: margin-top $dur $ease-expr, min-height $dur $ease-expr, opacity $dur-sm $ease;
+  &.hidden { opacity: 0; }
+}
+.ws {
+  min-width: 32px;
+  border-radius: $full;
+  margin-bottom: 4px;
+  &:last-child { margin-bottom: 0; }
+}
+.ws-shape-area { min-height: 32px; min-width: 32px; }
+.ws-dot {
+  min-width: 8px; min-height: 8px;
+  border-radius: $full;
+  background-color: $outlineVariant;
+  transition: all $dur $ease-expr;
+}
+.ws.occupied .ws-dot {
+  min-width: 11px; min-height: 11px;
+  border-radius: 3px;
+  background-color: $onSurface;
+}
+.ws.empty:hover .ws-dot { background-color: $onSurfaceVariant; }
+.ws-icons { padding-bottom: 4px; }
+.ws-win {
+  font-size: 16px;
+  min-height: 20px;
+  color: $onSurfaceVariant;
+}
+.ws.active .ws-win { color: $onPrimary; }
+
+// ---- active window
+.bar-window { padding: $sp-sm 0; }
+.bar-window-icon { color: $primary; font-size: 20px; margin-bottom: $sp-sm; }
+.bar-window-title {
+  color: $primary;
+  font-size: fs(12);
+  letter-spacing: 1.4px;
+}
+
+// ---- bottom group
+.bar-bottom { padding-bottom: $pad-lg; }
+.bar-tray { margin-bottom: $sp-md; }
+.bar-tray menu, .bar-tray menuitem {
+  background-color: $surfaceContainer;
+  color: $onSurface;
+  padding: 6px 10px;
+  border-radius: $rounding-sm;
+}
+.bar-tray menuitem:hover { background-color: $surfaceContainerHighest; }
+
+.bar-clock {
+  margin-bottom: $sp-md;
+  border-radius: $full;
+  padding: 2px 0;
+}
+.bar-clock-icon { color: $tertiary; margin-bottom: $sp-xs; }
+.bar-clock-text {
+  font-family: $font-clock;
+  color: $tertiary;
+  font-size: fs(13.2);
+  font-weight: 400;
+  &.mins { margin-top: -4px; }
+}
+
+.status-pill {
+  background-color: $container;
+  border-radius: $full;
+  min-width: 40px;
+  padding: $pad-md 0;
+  margin-bottom: $sp-md;
+}
+.status-slot { min-height: 30px; }
+.status-icon {
+  color: $secondary;
+  font-size: 20px;
+  min-height: 30px;
+  &.low { color: $error; }
+}
+
+.bar-power {
+  min-width: 32px; min-height: 32px;
+  border-radius: $full;
+  transition: background-color $dur-sm $ease;
+  &:hover { background-color: rgba($onSurface, 0.08); }
+  .icon { color: $error; font-size: 20px; font-weight: 700; }
+}
