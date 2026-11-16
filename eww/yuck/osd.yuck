@@ -3,7 +3,7 @@
   :geometry (geometry :anchor "center right")
   :stacking "overlay" :exclusive false :focusable "none" :namespace "sheels-osd"
   (eventbox :onhover "sheels hover osd" :onhoverlost "sheels unhover osd"
-    (revealer :transition "slideleft" :reveal {ui.osd} :duration "400ms"
+    (revealer :transition "slideleft" :reveal {ui.osd} :duration "300ms"
       (box :orientation "v" :space-evenly false
         (box :class "fillet rt" :halign "end")
         (box :class "panel right osd-panel" :orientation "h" :space-evenly false

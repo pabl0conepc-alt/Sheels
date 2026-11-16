@@ -4,7 +4,7 @@
   :geometry (geometry :anchor "center right")
   :stacking "overlay" :exclusive false :focusable "exclusive" :namespace "sheels-session"
   (eventbox :onhover "sheels hover session" :onhoverlost "sheels unhover session"
-  (revealer :transition "slideleft" :reveal {ui.session} :duration "400ms"
+  (revealer :transition "slideleft" :reveal {ui.session} :duration "300ms"
     (box :orientation "v" :space-evenly false
       (box :class "fillet rt" :halign "end")
       (box :class "panel right session-panel" :orientation "v" :space-evenly false

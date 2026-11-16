@@ -5,7 +5,7 @@
   :geometry (geometry :anchor "top center")
   :stacking "overlay" :exclusive false :focusable "none" :namespace "sheels-dashboard"
   (eventbox :onhover "sheels hover dashboard" :onhoverlost "sheels unhover dashboard"
-    (revealer :transition "slidedown" :reveal {ui.dashboard} :duration "400ms"
+    (revealer :transition "slidedown" :reveal {ui.dashboard} :duration "300ms"
       (box :orientation "h" :space-evenly false
         (box :class "fillet tl" :valign "start")
         (box :class "panel top dash" :orientation "v" :space-evenly false

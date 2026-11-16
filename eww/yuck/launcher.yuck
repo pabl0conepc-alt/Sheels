@@ -6,7 +6,7 @@
 (defwindow launcher [maxh]
   :geometry (geometry :anchor "bottom center")
   :stacking "overlay" :exclusive false :focusable "exclusive" :namespace "sheels-launcher"
-  (revealer :transition "slideup" :reveal {ui.launcher} :duration "400ms"
+  (revealer :transition "slideup" :reveal {ui.launcher} :duration "300ms"
     (box :orientation "h" :space-evenly false
       (box :class "fillet bl" :valign "end")
       (box :class "panel bottom launcher-panel" :orientation "v" :space-evenly false

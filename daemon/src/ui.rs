@@ -21,7 +21,7 @@ const ALL: &[&str] = &["launcher", "dashboard", "session", "sidebar", "utilities
 /// widget tree is the expensive part of opening it, so it is built once.
 const PERSISTENT: &[&str] = &["dashboard"];
 /// Revealer transition length used in the SCSS/yuck (keep in sync).
-const ANIM_MS: u64 = 400;
+const ANIM_MS: u64 = 300;
 
 #[derive(Default, Clone)]
 struct Panel {
