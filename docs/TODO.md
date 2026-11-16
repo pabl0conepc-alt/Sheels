@@ -1,6 +1,6 @@
 # Pendências (relatadas no uso real, 2026-11-16)
 
-- [ ] CPU ~20% fora do Sheels? Medir por processo (`top -o %CPU`) com a dashboard fechada. Suspeitas: janela órfã da dashboard (corrida corrigida em 2026-11-16), driftwm renderizando, gif animado.
+- [x] CPU alta ao abrir a dashboard: a janela era reconstruída a cada abertura (agora é persistente) e o clima tentava geolocalizar de novo a cada abertura quando falhava.
 - [ ] Animações/hover mais rápidos (transições de 200/400 ms, abrir janela ao passar o mouse leva um frame extra).
 - [ ] Sessão: arrastar o painel para o lado para revelar a sidebar (notificações + IA), como no Caelestia.
 - [ ] Foto do usuário: clicar no avatar da dashboard para escolher a imagem (hoje: copiar para `~/.face`).

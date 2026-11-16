@@ -13,6 +13,8 @@ struct Inner {
     cal_offset: i32,
     weather: Value,
     weather_at: Option<Instant>,
+    /// Last fetch attempt (failed ones are retried after 5 min, not on every wake).
+    tried_at: Option<Instant>,
     loc: Option<(f64, f64, String)>,
 }
 
@@ -94,6 +96,17 @@ fn username() -> String {
 
 impl Info {
     pub fn wake(&self) {
+        self.wake.notify_one();
+    }
+
+    /// Location/units changed: forget the cached place and fetch again now.
+    pub fn refresh_weather(&self) {
+        {
+            let mut i = self.inner.lock().unwrap();
+            i.loc = None;
+            i.weather_at = None;
+            i.tried_at = None;
+        }
         self.wake.notify_one();
     }
 
@@ -298,8 +311,13 @@ pub async fn run() {
         }
     info.publish();
     loop {
-        let stale = info.inner.lock().unwrap().weather_at.map(|t| t.elapsed() > Duration::from_secs(1800)).unwrap_or(true);
+        let stale = {
+            let i = info.inner.lock().unwrap();
+            i.weather_at.map(|t| t.elapsed() > Duration::from_secs(1800)).unwrap_or(true)
+                && i.tried_at.map(|t| t.elapsed() > Duration::from_secs(300)).unwrap_or(true)
+        };
         if stale {
+            info.inner.lock().unwrap().tried_at = Some(Instant::now());
             info.fetch_weather().await;
         }
         // Uptime is refreshed while the dashboard is visible (once a minute).

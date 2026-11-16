@@ -60,6 +60,43 @@ fn system_layout() -> Option<(String, String)> {
     Some((layout, field("X11 Variant:").unwrap_or_default()))
 }
 
+/// Copy the terminal configs (backing up different existing files as .bak).
+fn install_terminal(cfg_dir: &Path) {
+    let share = share_dir().join("config");
+    let files = [
+        ("foot/foot.ini", "foot/foot.ini"),
+        ("fish/config.fish", "fish/config.fish"),
+        ("fish/functions/fish_greeting.fish", "fish/functions/fish_greeting.fish"),
+        ("starship.toml", "starship.toml"),
+        ("fastfetch/config.jsonc", "fastfetch/config.jsonc"),
+        ("btop/btop.conf", "btop/btop.conf"),
+    ];
+    let mut done = 0;
+    for (src, dst) in files {
+        let Ok(new) = std::fs::read_to_string(share.join(src)) else { continue };
+        let target = cfg_dir.join(dst);
+        if std::fs::read_to_string(&target).map(|c| c == new).unwrap_or(false) {
+            done += 1;
+            continue;
+        }
+        let _ = std::fs::create_dir_all(target.parent().unwrap());
+        if target.exists() {
+            let bak = std::path::PathBuf::from(format!("{}.bak", target.display()));
+            let _ = std::fs::copy(&target, &bak);
+        }
+        let _ = std::fs::remove_file(&target);
+        if std::fs::write(&target, new).is_ok() {
+            done += 1;
+        }
+    }
+    // btop follows the generated colour scheme.
+    let theme = cfg_dir.join("btop/themes/caelestia.theme");
+    let _ = std::fs::create_dir_all(theme.parent().unwrap());
+    let _ = std::fs::remove_file(&theme);
+    let _ = std::os::unix::fs::symlink(crate::util::state_dir().join("theme/btop.theme"), &theme);
+    ok(&format!("terminal configs (foot, fish + fastfetch, starship, btop): {done}/6, old files kept as .bak"));
+}
+
 pub fn run(args: &[String]) -> i32 {
     let force = args.iter().any(|a| a == "--force");
     let check_only = args.iter().any(|a| a == "--check");
@@ -113,7 +150,12 @@ pub fn run(args: &[String]) -> i32 {
         }
     }
 
-    // 2. wallpapers
+    // 2. Caelestia terminal: foot + fish (fastfetch greeting) + starship + btop
+    if !check_only && !args.iter().any(|a| a == "--no-terminal") {
+        install_terminal(&cfg_dir);
+    }
+
+    // 3. wallpapers
     let walls = expand(&crate::config::Config::load().paths.wallpaper_dir);
     if !check_only {
         let _ = std::fs::create_dir_all(&walls);
@@ -136,6 +178,9 @@ pub fn run(args: &[String]) -> i32 {
         ("swayidle", "auto-lock on idle"),
         ("cliphist", "clipboard history"),
         ("foot", "terminal (Super+T)"),
+        ("fish", "shell with the Caelestia greeting"),
+        ("fastfetch", "terminal greeting"),
+        ("starship", "prompt"),
     ] {
         if which(bin) {
             ok(&format!("{bin} ({what})"));

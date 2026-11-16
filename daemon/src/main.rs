@@ -35,7 +35,7 @@ mod wm;
 const HELP: &str = "sheels — Caelestia-style shell for driftwm + EWW
 
 USAGE:
-  sheels setup [--check|--force]    per-user setup (driftwm config, wallpapers) + health check
+  sheels setup [--check|--force|--no-terminal]  per-user setup (driftwm + terminal configs, wallpapers) + health check
   sheels daemon                     start the shell (backend + EWW)
   sheels listen <topic>             stream topic JSON (wm status media notifs sys launcher ui theme info)
   sheels get <topic>                print a topic once
